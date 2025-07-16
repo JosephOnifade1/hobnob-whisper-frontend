@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ArrowLeft, FileText, Presentation, Image, UserCheck, Video, Shield, MessageSquare, Zap, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import FeatureRequestModal from '@/components/FeatureRequestModal';
 
 interface Tool {
   id: string;
@@ -217,12 +217,11 @@ const ExploreTools = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button
-                onClick={() => toast.success('Feature request submitted!')}
-                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
-              >
-                Request a Feature
-              </Button>
+              <FeatureRequestModal>
+                <Button className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700">
+                  Request a Feature
+                </Button>
+              </FeatureRequestModal>
             </CardContent>
           </Card>
         </div>
