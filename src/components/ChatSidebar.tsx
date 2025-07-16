@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { MessageSquare, Plus, Settings, Menu, X, Trash2, Edit3 } from 'lucide-react';
+import { MessageSquare, Plus, Settings, Menu, X, Trash2, Edit3, Video, Shield, Compass, User, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 interface ChatSession {
   id: string;
@@ -24,11 +25,19 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onChatSelect,
   onNewChat
 }) => {
+  const navigate = useNavigate();
   const [chatSessions] = useState<ChatSession[]>([
     { id: '1', title: 'Getting started with AI', timestamp: new Date() },
     { id: '2', title: 'Creative writing tips', timestamp: new Date(Date.now() - 86400000) },
     { id: '3', title: 'Code optimization help', timestamp: new Date(Date.now() - 172800000) },
   ]);
+
+  const navigationItems = [
+    { icon: MessageSquare, label: 'Chat', path: '/' },
+    { icon: Video, label: 'Video Generation', path: '/video-generation' },
+    { icon: Shield, label: 'Fake News Detection', path: '/fake-news-detection' },
+    { icon: Compass, label: 'Explore Tools', path: '/explore' },
+  ];
 
   return (
     <>
@@ -65,11 +74,39 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           
           <Button
             onClick={onNewChat}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0"
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 mb-4"
           >
             <Plus className="h-4 w-4 mr-2" />
             New Chat
           </Button>
+
+          <Button
+            onClick={() => navigate('/account')}
+            className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white border-0"
+          >
+            <Crown className="h-4 w-4 mr-2" />
+            Upgrade to Pro
+          </Button>
+        </div>
+
+        {/* Navigation */}
+        <div className="p-2 border-b border-gray-700">
+          <div className="space-y-1">
+            {navigationItems.map((item) => (
+              <Button
+                key={item.path}
+                onClick={() => {
+                  navigate(item.path);
+                  onToggle();
+                }}
+                variant="ghost"
+                className="w-full justify-start text-gray-300 hover:text-white hover:bg-gray-800"
+              >
+                <item.icon className="h-4 w-4 mr-3" />
+                {item.label}
+              </Button>
+            ))}
+          </div>
         </div>
 
         {/* Chat History */}
@@ -105,9 +142,21 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
         {/* Footer */}
         <div className="p-4 border-t border-gray-700">
-          <Button variant="ghost" className="w-full justify-start text-gray-300 hover:text-white hover:bg-gray-800">
+          <Button 
+            onClick={() => navigate('/account')}
+            variant="ghost" 
+            className="w-full justify-start text-gray-300 hover:text-white hover:bg-gray-800"
+          >
+            <User className="h-4 w-4 mr-3" />
+            Account Settings
+          </Button>
+          <Button 
+            onClick={() => navigate('/admin')}
+            variant="ghost" 
+            className="w-full justify-start text-gray-300 hover:text-white hover:bg-gray-800"
+          >
             <Settings className="h-4 w-4 mr-3" />
-            Settings
+            Admin Dashboard
           </Button>
         </div>
       </div>
