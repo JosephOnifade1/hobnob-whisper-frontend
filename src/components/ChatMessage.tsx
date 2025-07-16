@@ -21,18 +21,23 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     navigator.clipboard.writeText(message.content);
   };
 
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    });
+  };
+
   return (
-    <div className={`
-      flex w-full py-6 px-4
-      ${isAssistant ? 'bg-gray-50' : 'bg-white'}
-    `}>
+    <div className={`message-group flex w-full py-6 px-4 ${isAssistant ? 'bg-[#1a1a1a]' : 'bg-[#121212]'}`}>
       <div className="max-w-4xl mx-auto w-full flex gap-4">
         {/* Avatar */}
         <div className={`
           flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center
           ${isAssistant 
-            ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white' 
-            : 'bg-gray-700 text-white'
+            ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg' 
+            : 'bg-gradient-to-r from-indigo-600 to-purple-700 text-white shadow-lg'
           }
         `}>
           {isAssistant ? (
@@ -44,40 +49,53 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="prose prose-gray max-w-none">
-            <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
+          {/* Message bubble */}
+          <div className={`
+            message-appear inline-block max-w-[80%] p-4 
+            ${isAssistant 
+              ? 'message-bubble-ai text-gray-100' 
+              : 'message-bubble-user text-white'
+            }
+          `}>
+            <div className="whitespace-pre-wrap text-sm leading-relaxed">
               {message.content}
             </div>
           </div>
 
-          {/* Actions */}
-          {isAssistant && (
-            <div className="flex items-center gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={copyToClipboard}
-                className="h-7 text-gray-500 hover:text-gray-700"
-              >
-                <Copy className="h-3 w-3 mr-1" />
-                Copy
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-gray-500 hover:text-gray-700"
-              >
-                <ThumbsUp className="h-3 w-3" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-gray-500 hover:text-gray-700"
-              >
-                <ThumbsDown className="h-3 w-3" />
-              </Button>
-            </div>
-          )}
+          {/* Timestamp and actions */}
+          <div className="flex items-center gap-2 mt-2">
+            <span className="timestamp-hover text-xs text-gray-500">
+              {formatTime(message.timestamp)}
+            </span>
+            
+            {isAssistant && (
+              <div className="timestamp-hover flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={copyToClipboard}
+                  className="h-6 px-2 text-gray-500 hover:text-gray-300 hover:bg-[#2e2e2e]"
+                >
+                  <Copy className="h-3 w-3 mr-1" />
+                  <span className="text-xs">Copy</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-gray-500 hover:text-green-400 hover:bg-[#2e2e2e]"
+                >
+                  <ThumbsUp className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-gray-500 hover:text-red-400 hover:bg-[#2e2e2e]"
+                >
+                  <ThumbsDown className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

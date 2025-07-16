@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,7 +23,7 @@ const Index = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: "Hello! I'm Hobnob AI, your advanced AI assistant. I can help you with:\n\n• **AI Video Generation** - Create stunning videos from text prompts\n• **Fake News Detection** - Analyze news credibility and bias\n• **Professional Tools** - Generate avatars, invoices, emails, and more\n• **Multi-modal Analysis** - Understand images, videos, documents, and audio\n• **Smart AI Routing** - Automatically use the best AI model for your task\n\nHow can I assist you today?",
+      content: "Hello! I'm Hobnob AI, your advanced AI assistant optimized for nighttime productivity. I can help you with:\n\n• **AI Video Generation** - Create stunning videos from text prompts\n• **Fake News Detection** - Analyze news credibility and bias\n• **Professional Tools** - Generate avatars, invoices, emails, and more\n• **Multi-modal Analysis** - Understand images, videos, documents, and audio\n• **Smart AI Routing** - Automatically use the best AI model for your task\n\nHow can I assist you today?",
       role: 'assistant',
       timestamp: new Date(),
     },
@@ -48,7 +47,6 @@ const Index = () => {
       let response = '';
       const lowerContent = content.toLowerCase();
       
-      // Smart routing based on content
       if (lowerContent.includes('video') || lowerContent.includes('generate video')) {
         response = `🎬 **Video Generation Request Detected**\n\nI can help you create AI-generated videos! Using our **Runway API integration**, you can create:\n\n• **Talking Head Videos** - Professional presentations\n• **Cinematic Scenes** - Movie-like sequences\n• **Product Demos** - Showcase your products\n• **Explainer Videos** - Educational content\n\nWould you like me to guide you through the video generation process, or would you prefer to visit our dedicated Video Generation page?`;
       } else if (lowerContent.includes('fake news') || lowerContent.includes('fact check') || lowerContent.includes('news')) {
@@ -94,7 +92,7 @@ const Index = () => {
     setMessages([
       {
         id: Date.now().toString(),
-        content: "Hello! I'm Hobnob AI, your advanced AI assistant. I can help you with:\n\n• **AI Video Generation** - Create stunning videos from text prompts\n• **Fake News Detection** - Analyze news credibility and bias\n• **Professional Tools** - Generate avatars, invoices, emails, and more\n• **Multi-modal Analysis** - Understand images, videos, documents, and audio\n• **Smart AI Routing** - Automatically use the best AI model for your task\n\nHow can I assist you today?",
+        content: "Hello! I'm Hobnob AI, your advanced AI assistant optimized for nighttime productivity. How can I assist you today?",
         role: 'assistant',
         timestamp: new Date(),
       },
@@ -109,7 +107,7 @@ const Index = () => {
   };
 
   return (
-    <div className="flex h-screen bg-white dark:bg-gray-900 transition-colors">
+    <div className="flex h-screen bg-[#121212] text-white">
       {/* Sidebar */}
       <ChatSidebar
         isOpen={sidebarOpen}
@@ -122,18 +120,18 @@ const Index = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col lg:ml-0">
         {/* Header */}
-        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 p-4">
+        <div className="bg-[#1a1a1a] border-b border-[#2e2e2e] p-4 backdrop-blur-md bg-opacity-80">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setSidebarOpen(true)}
-                className="lg:hidden text-gray-600 dark:text-gray-300"
+                className="lg:hidden text-gray-400 hover:text-white hover:bg-[#2e2e2e]"
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              <h1 className="text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                 Hobnob AI
               </h1>
             </div>
@@ -142,100 +140,68 @@ const Index = () => {
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pb-32">
           {messages.length === 1 ? (
             // Welcome Screen
-            <div className="flex items-center justify-center h-full p-4">
+            <div className="flex items-center justify-center min-h-full p-4">
               <div className="text-center max-w-4xl mx-auto">
-                <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Welcome to Hobnob AI Pro
-                </h1>
-                <p className="text-gray-600 dark:text-gray-300 text-lg mb-8">
-                  Your advanced AI assistant with professional tools, multi-modal support, and smart AI routing.
-                </p>
+                <div className="mb-8">
+                  <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                    Welcome to Hobnob AI Pro
+                  </h1>
+                  <p className="text-gray-400 text-lg mb-8">
+                    Your advanced AI assistant optimized for nighttime productivity and mobile-first power users.
+                  </p>
+                </div>
                 
                 {/* Quick Actions */}
                 <QuickActions onActionSelect={handleQuickAction} />
                 
-                {/* Suggested Prompts */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                  <button
-                    onClick={() => handleQuickAction("Generate a professional video about sustainable energy using cinematic style")}
-                    className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer text-left"
-                  >
-                    <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-2">🎬 AI Video Generation</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Create stunning videos with Runway API</p>
-                  </button>
-                  <button
-                    onClick={() => handleQuickAction("Analyze this news article for fake news and credibility")}
-                    className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors cursor-pointer text-left"
-                  >
-                    <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-2">🛡️ Fake News Detection</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Advanced credibility analysis</p>
-                  </button>
-                  <button
-                    onClick={() => handleQuickAction("Create a professional avatar from my description")}
-                    className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors cursor-pointer text-left"
-                  >
-                    <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-2">🎭 Avatar Generator</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">AI-powered avatar creation</p>
-                  </button>
-                  <button
-                    onClick={() => handleQuickAction("Help me write a cold email for my business")}
-                    className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors cursor-pointer text-left"
-                  >
-                    <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-2">📧 Professional Tools</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Emails, invoices, and more</p>
-                  </button>
-                </div>
-
                 {/* Feature highlights */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-sm mt-12">
                   <div className="text-center">
-                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center mx-auto mb-3 glow-shadow">
                       <span className="text-2xl">🧠</span>
                     </div>
-                    <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-1">Smart AI Router</h4>
-                    <p className="text-gray-600 dark:text-gray-400">GPT-4o + DeepSeek V3 integration</p>
+                    <h4 className="font-medium text-gray-200 mb-1">Smart AI Router</h4>
+                    <p className="text-gray-500">GPT-4o + DeepSeek V3 integration</p>
                   </div>
                   <div className="text-center">
-                    <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-xl flex items-center justify-center mx-auto mb-3 glow-shadow">
                       <span className="text-2xl">📁</span>
                     </div>
-                    <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-1">Multi-Modal</h4>
-                    <p className="text-gray-600 dark:text-gray-400">Images, videos, audio, and files</p>
+                    <h4 className="font-medium text-gray-200 mb-1">Multi-Modal</h4>
+                    <p className="text-gray-500">Images, videos, audio, and files</p>
                   </div>
                   <div className="text-center">
-                    <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-purple-800 rounded-xl flex items-center justify-center mx-auto mb-3 glow-shadow">
                       <span className="text-2xl">🌍</span>
                     </div>
-                    <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-1">Global AI</h4>
-                    <p className="text-gray-600 dark:text-gray-400">50+ languages, real-time data</p>
+                    <h4 className="font-medium text-gray-200 mb-1">Global AI</h4>
+                    <p className="text-gray-500">50+ languages, real-time data</p>
                   </div>
                   <div className="text-center">
-                    <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-orange-600 to-orange-800 rounded-xl flex items-center justify-center mx-auto mb-3 glow-shadow">
                       <span className="text-2xl">🔧</span>
                     </div>
-                    <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-1">Pro Tools</h4>
-                    <p className="text-gray-600 dark:text-gray-400">Professional AI toolkit</p>
+                    <h4 className="font-medium text-gray-200 mb-1">Pro Tools</h4>
+                    <p className="text-gray-500">Professional AI toolkit</p>
                   </div>
                 </div>
               </div>
             </div>
           ) : (
             // Messages
-            <div className="group">
+            <div className="space-y-0">
               {messages.map((message) => (
-                <div key={message.id} className="group">
-                  <ChatMessage message={message} />
-                </div>
+                <ChatMessage key={message.id} message={message} />
               ))}
               {isTyping && <TypingIndicator />}
             </div>
           )}
         </div>
 
-        {/* Input Area */}
+        {/* Input Area - Now floating */}
         <ChatInput onSendMessage={handleSendMessage} disabled={isTyping} />
       </div>
     </div>
