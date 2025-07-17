@@ -158,13 +158,13 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#121212] via-[#121212] to-transparent">
+    <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent">
       <div className="max-w-4xl mx-auto">
         {/* Attachments Preview */}
         {attachments.length > 0 && (
           <div className="mb-4 flex flex-wrap gap-2">
             {attachments.map((attachment) => (
-              <Card key={attachment.id} className="relative p-2 flex items-center gap-2 max-w-xs bg-[#1e1e1e] border-[#2e2e2e]">
+              <Card key={attachment.id} className="relative p-2 flex items-center gap-2 max-w-xs bg-card border-border">
                 {attachment.type === 'image' && attachment.preview && (
                   <img src={attachment.preview} alt="Preview" className="w-12 h-12 object-cover rounded" />
                 )}
@@ -172,13 +172,13 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
                   <video src={attachment.preview} className="w-12 h-12 object-cover rounded" />
                 )}
                 {attachment.type === 'audio' && (
-                  <div className="flex items-center gap-2 text-gray-300">
+                  <div className="flex items-center gap-2 text-foreground">
                     <Mic className="h-4 w-4" />
                     <span className="text-sm">Audio Recording</span>
                   </div>
                 )}
                 {attachment.type === 'file' && (
-                  <div className="flex items-center gap-2 text-gray-300">
+                  <div className="flex items-center gap-2 text-foreground">
                     <FileText className="h-4 w-4" />
                     <span className="text-sm truncate">{attachment.file.name}</span>
                   </div>
@@ -197,7 +197,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
         )}
 
         <form onSubmit={handleSubmit} className="relative">
-          <div className="floating-input glow-shadow rounded-2xl p-4 flex items-end gap-3">
+          <div className="bg-card border border-border rounded-2xl p-4 flex items-end gap-3 shadow-lg">
             {/* Attachment Menu */}
             <div className="relative">
               <Button
@@ -205,20 +205,20 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-                className="text-gray-400 hover:text-gray-200 p-2 rounded-lg hover:bg-[#2e2e2e]"
+                className="text-muted-foreground hover:text-foreground p-2 rounded-lg hover:bg-accent"
               >
                 <Paperclip className="h-5 w-5" />
               </Button>
 
               {showAttachmentMenu && (
-                <Card className="absolute bottom-full mb-2 left-0 p-2 min-w-[200px] z-10 bg-[#1e1e1e] border-[#2e2e2e]">
+                <Card className="absolute bottom-full mb-2 left-0 p-2 min-w-[200px] z-10 bg-card border-border">
                   <div className="space-y-1">
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => handleFileSelect('image')}
-                      className="w-full justify-start text-gray-300 hover:text-white hover:bg-[#2e2e2e]"
+                      className="w-full justify-start text-foreground hover:text-foreground hover:bg-accent"
                     >
                       <Image className="h-4 w-4 mr-2" />
                       Upload Image
@@ -228,7 +228,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
                       variant="ghost"
                       size="sm"
                       onClick={() => handleFileSelect('video')}
-                      className="w-full justify-start text-gray-300 hover:text-white hover:bg-[#2e2e2e]"
+                      className="w-full justify-start text-foreground hover:text-foreground hover:bg-accent"
                     >
                       <Video className="h-4 w-4 mr-2" />
                       Upload Video
@@ -238,7 +238,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
                       variant="ghost"
                       size="sm"
                       onClick={() => handleFileSelect('file')}
-                      className="w-full justify-start text-gray-300 hover:text-white hover:bg-[#2e2e2e]"
+                      className="w-full justify-start text-foreground hover:text-foreground hover:bg-accent"
                     >
                       <FileText className="h-4 w-4 mr-2" />
                       Upload File
@@ -248,7 +248,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
                       variant="ghost"
                       size="sm"
                       onClick={captureCamera}
-                      className="w-full justify-start text-gray-300 hover:text-white hover:bg-[#2e2e2e]"
+                      className="w-full justify-start text-foreground hover:text-foreground hover:bg-accent"
                     >
                       <Camera className="h-4 w-4 mr-2" />
                       Take Photo
@@ -266,7 +266,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
               onKeyDown={handleKeyDown}
               placeholder="Ask anything..."
               disabled={disabled}
-              className="flex-1 border-0 bg-transparent resize-none focus:ring-0 focus:outline-none min-h-[24px] max-h-32 text-white placeholder-gray-500 text-base"
+              className="flex-1 border-0 bg-transparent resize-none focus:ring-0 focus:outline-none min-h-[24px] max-h-32 text-foreground placeholder-muted-foreground text-base"
               rows={1}
             />
 
@@ -275,7 +275,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
               type="button"
               variant="ghost"
               size="sm"
-              className="text-gray-400 hover:text-gray-200 p-2 rounded-lg hover:bg-[#2e2e2e]"
+              className="text-muted-foreground hover:text-foreground p-2 rounded-lg hover:bg-accent"
             >
               <Globe className="h-5 w-5" />
             </Button>
@@ -286,7 +286,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
               variant="ghost"
               size="sm"
               onClick={isRecording ? stopRecording : startRecording}
-              className={`p-2 rounded-lg ${isRecording ? 'text-red-400 animate-pulse' : 'text-gray-400 hover:text-gray-200 hover:bg-[#2e2e2e]'}`}
+              className={`p-2 rounded-lg ${isRecording ? 'text-red-400 animate-pulse' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
             >
               {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
             </Button>
@@ -296,7 +296,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
               type="submit"
               disabled={(!message.trim() && attachments.length === 0) || disabled}
               className={`
-                send-button p-3 rounded-xl transition-all duration-200
+                bg-primary text-primary-foreground p-3 rounded-xl transition-all duration-200 hover:bg-primary/90
                 ${(message.trim() || attachments.length > 0) && !disabled
                   ? 'opacity-100'
                   : 'opacity-50 cursor-not-allowed'
@@ -309,7 +309,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
         </form>
 
         {/* Footer text */}
-        <p className="text-xs text-gray-500 text-center mt-3">
+        <p className="text-xs text-muted-foreground text-center mt-3">
           Hobnob AI can make mistakes. Consider checking important information.
         </p>
       </div>

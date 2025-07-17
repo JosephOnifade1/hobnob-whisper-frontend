@@ -30,7 +30,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   };
 
   return (
-    <div className={`message-group flex w-full py-6 px-4 ${isAssistant ? 'bg-[#1a1a1a]' : 'bg-[#121212]'}`}>
+    <div className={`message-group flex w-full py-6 px-4 ${isAssistant ? 'bg-muted/30' : 'bg-background'}`}>
       <div className="max-w-4xl mx-auto w-full flex gap-4">
         {/* Avatar */}
         <div className={`
@@ -49,22 +49,16 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          {/* Message bubble */}
-          <div className={`
-            message-appear inline-block max-w-[80%] p-4 
-            ${isAssistant 
-              ? 'message-bubble-ai text-gray-100' 
-              : 'message-bubble-user text-white'
-            }
-          `}>
-            <div className="whitespace-pre-wrap text-sm leading-relaxed">
+          {/* Message content */}
+          <div className="prose prose-sm max-w-none dark:prose-invert light:prose-gray">
+            <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
               {message.content}
             </div>
           </div>
 
           {/* Timestamp and actions */}
           <div className="flex items-center gap-2 mt-2">
-            <span className="timestamp-hover text-xs text-gray-500">
+            <span className="timestamp-hover text-xs text-muted-foreground">
               {formatTime(message.timestamp)}
             </span>
             
@@ -74,7 +68,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                   variant="ghost"
                   size="sm"
                   onClick={copyToClipboard}
-                  className="h-6 px-2 text-gray-500 hover:text-gray-300 hover:bg-[#2e2e2e]"
+                  className="h-6 px-2 text-muted-foreground hover:text-foreground hover:bg-accent"
                 >
                   <Copy className="h-3 w-3 mr-1" />
                   <span className="text-xs">Copy</span>
@@ -82,14 +76,14 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-2 text-gray-500 hover:text-green-400 hover:bg-[#2e2e2e]"
+                  className="h-6 px-2 text-muted-foreground hover:text-green-400 hover:bg-accent"
                 >
                   <ThumbsUp className="h-3 w-3" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-2 text-gray-500 hover:text-red-400 hover:bg-[#2e2e2e]"
+                  className="h-6 px-2 text-muted-foreground hover:text-red-400 hover:bg-accent"
                 >
                   <ThumbsDown className="h-3 w-3" />
                 </Button>
