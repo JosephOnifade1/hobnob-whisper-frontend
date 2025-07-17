@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Menu } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import ChatSidebar from '@/components/ChatSidebar';
 import ChatMessage from '@/components/ChatMessage';
@@ -17,6 +18,7 @@ interface Message {
 }
 
 const Index = () => {
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentChatId, setCurrentChatId] = useState('1');
   const [isTyping, setIsTyping] = useState(false);
@@ -131,9 +133,19 @@ const Index = () => {
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              <h1 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                Hobnob AI
-              </h1>
+              <div className="flex items-center gap-6">
+                <h1 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                  Hobnob AI
+                </h1>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/tools')}
+                  className="text-gray-400 hover:text-white hover:bg-[#2e2e2e]"
+                >
+                  Tools Dashboard
+                </Button>
+              </div>
             </div>
             <ThemeToggle />
           </div>

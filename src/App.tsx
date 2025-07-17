@@ -11,6 +11,8 @@ import AccountSettings from "./pages/AccountSettings";
 import ExploreTools from "./pages/ExploreTools";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
+import ToolsDashboard from "./pages/ToolsDashboard";
+import AvatarGenerator from "./pages/AvatarGenerator";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +29,8 @@ const App = () => (
           <Route path="/account" element={<AccountSettings />} />
           <Route path="/explore" element={<ExploreTools />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/tools" element={<ToolsDashboard />} />
+          <Route path="/tools/avatar-generator" element={<AvatarGenerator />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
