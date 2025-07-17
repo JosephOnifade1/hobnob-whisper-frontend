@@ -4,7 +4,7 @@ import { Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const ThemeToggle = () => {
-  const [isDark, setIsDark] = useState(true); // Default to dark mode
+  const [isDark, setIsDark] = useState(true);
 
   useEffect(() => {
     // Check for saved theme preference or default to dark mode
@@ -40,7 +40,7 @@ const ThemeToggle = () => {
       variant="ghost"
       size="sm"
       onClick={toggleTheme}
-      className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
+      className="text-muted-foreground hover:text-foreground hover:bg-accent"
     >
       {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </Button>

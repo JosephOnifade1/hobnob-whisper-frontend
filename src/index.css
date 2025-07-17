@@ -65,30 +65,45 @@
   * {
     @apply border-border;
   }
+  
+  html {
+    @apply bg-background text-foreground;
+  }
+  
   body {
     @apply bg-background text-foreground font-sans;
     font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #121212;
-    color: #ffffff;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+  
+  /* Light mode specific styles */
+  .light body {
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+  
+  /* Dark mode specific styles */
+  .dark body {
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
 }
 
-/* Custom scrollbar styles for dark theme */
+/* Custom scrollbar styles */
 ::-webkit-scrollbar {
   width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #1e1e1e;
+  @apply bg-muted;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #404040;
-  border-radius: 3px;
+  @apply bg-muted-foreground/30 rounded;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #505050;
+  @apply bg-muted-foreground/50;
 }
 
 /* Smooth transitions */
@@ -141,8 +156,7 @@
 
 /* Floating input styles */
 .floating-input {
-  background: #1e1e1e;
-  border: 1px solid #2e2e2e;
+  @apply bg-background border-border;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 20px rgba(59, 130, 246, 0.1);
   backdrop-filter: blur(10px);
 }
@@ -164,8 +178,7 @@
 }
 
 .message-bubble-ai {
-  background: #1e1e1e;
-  border: 1px solid #2e2e2e;
+  @apply bg-card border-border;
   border-radius: 18px 18px 18px 4px;
 }
 
