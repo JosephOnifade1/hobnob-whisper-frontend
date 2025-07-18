@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ArrowLeft, FileImage, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -151,7 +150,6 @@ const ToolsDashboard = () => {
                     )}
                     {tool.isPro && (
                       <Badge className="bg-yellow-600/20 text-yellow-400 border-yellow-500/30 text-xs">
-                        <Star className="h-3 w-3 mr-1" />
                         Pro
                       </Badge>
                     )}
