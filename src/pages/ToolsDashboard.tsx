@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { ArrowLeft, Video, FileImage, FileText, Mail, Bot, Leaf, Zap, Shield, Globe, Star, Plus } from 'lucide-react';
+import { ArrowLeft, FileImage, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,81 +25,6 @@ const ToolsDashboard = () => {
 
   const tools: Tool[] = [
     {
-      id: 'avatar-generator',
-      title: 'Avatar Generator',
-      description: 'Create AI avatars from text or transform photos using Runway Gen-2',
-      icon: Bot,
-      category: 'Creative',
-      route: '/tools/avatar-generator',
-      emoji: '🧑‍🎨',
-      isPro: true,
-      isNew: true,
-    },
-    {
-      id: 'video-generation',
-      title: 'Video Generation',
-      description: 'Generate short videos from text prompts or images using Runway API',
-      icon: Video,
-      category: 'Creative',
-      route: '/video-generation',
-      emoji: '🎞️',
-      isPro: true,
-    },
-    {
-      id: 'invoice-generator',
-      title: 'Invoice Generator',
-      description: 'Create professional PDF invoices with custom branding and templates',
-      icon: FileText,
-      category: 'Business',
-      route: '/tools/invoice-generator',
-      emoji: '📄',
-    },
-    {
-      id: 'cold-email-generator',
-      title: 'Cold Email Generator',
-      description: 'AI-powered personalized outreach emails for sales and partnerships',
-      icon: Mail,
-      category: 'Business',
-      route: '/tools/cold-email-generator',
-      emoji: '📧',
-    },
-    {
-      id: 'plant-identifier',
-      title: 'Plant Identifier',
-      description: 'Identify plant species and get care instructions using Plant.id API',
-      icon: Leaf,
-      category: 'Analysis',
-      route: '/tools/plant-identifier',
-      emoji: '🌿',
-    },
-    {
-      id: 'animal-detector',
-      title: 'Animal Detector',
-      description: 'Recognize animals and get detailed information using Clarifai API',
-      icon: Zap,
-      category: 'Analysis',
-      route: '/tools/animal-detector',
-      emoji: '🐾',
-    },
-    {
-      id: 'mood-detection',
-      title: 'Mood Detection',
-      description: 'Analyze emotional tone and provide empathetic responses',
-      icon: Star,
-      category: 'Analysis',
-      route: '/tools/mood-detection',
-      emoji: '😊',
-    },
-    {
-      id: 'fake-news-detection',
-      title: 'Fake News Detection',
-      description: 'Verify news credibility and detect bias using multiple fact-check APIs',
-      icon: Shield,
-      category: 'Analysis',
-      route: '/fake-news-detection',
-      emoji: '🛡️',
-    },
-    {
       id: 'document-converter',
       title: 'Document Converter',
       description: 'Convert between PDF, JPG, DOCX formats and extract YouTube to MP3',
@@ -106,16 +32,6 @@ const ToolsDashboard = () => {
       category: 'Content',
       route: '/tools/document-converter',
       emoji: '🌀',
-      comingSoon: true,
-    },
-    {
-      id: 'news-feed',
-      title: 'Real-Time News Feed',
-      description: 'Get trending news and headlines using GNews API',
-      icon: Globe,
-      category: 'Content',
-      route: '/tools/news-feed',
-      emoji: '🗞️',
       comingSoon: true,
     },
   ];
