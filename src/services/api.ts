@@ -32,10 +32,16 @@ export interface FakeNewsAnalysis {
   flags: string[];
 }
 
-export interface ApiError {
-  message: string;
-  code?: string;
-  status?: number;
+// Custom error class for API errors
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public code?: string,
+    public status?: number
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
 }
 
 // API Service for handling OpenAI requests with proper error handling
@@ -186,17 +192,3 @@ export class ApiService {
     }
   }
 }
-
-// Custom error class for API errors
-class ApiError extends Error {
-  constructor(
-    message: string,
-    public code?: string,
-    public status?: number
-  ) {
-    super(message);
-    this.name = 'ApiError';
-  }
-}
-
-export { ApiError };
