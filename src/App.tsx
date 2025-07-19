@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
+import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import VideoGeneration from "./pages/VideoGeneration";
 import FakeNewsDetection from "./pages/FakeNewsDetection";
@@ -32,24 +33,26 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/video-generation" element={<VideoGeneration />} />
-            <Route path="/fake-news-detection" element={<FakeNewsDetection />} />
-            <Route path="/account" element={<AccountSettings />} />
-            <Route path="/explore" element={<ExploreTools />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/tools" element={<ToolsDashboard />} />
-            <Route path="/tools/avatar-generator" element={<AvatarGenerator />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/video-generation" element={<VideoGeneration />} />
+              <Route path="/fake-news-detection" element={<FakeNewsDetection />} />
+              <Route path="/account" element={<AccountSettings />} />
+              <Route path="/explore" element={<ExploreTools />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/tools" element={<ToolsDashboard />} />
+              <Route path="/tools/avatar-generator" element={<AvatarGenerator />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 };
