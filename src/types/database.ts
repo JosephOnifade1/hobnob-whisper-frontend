@@ -29,7 +29,7 @@ export interface ChatMessage {
 export interface UserSettings {
   id: string
   user_id: string
-  theme: 'light' | 'dark'
+  theme: string // Changed from 'light' | 'dark' to string to match Supabase response
   language: string
   preferences: Record<string, any>
   created_at: string
@@ -68,7 +68,7 @@ export interface ChatMessageInsert {
 
 export interface UserSettingsInsert {
   user_id: string
-  theme?: 'light' | 'dark'
+  theme?: string // Changed from 'light' | 'dark' to string
   language?: string
   preferences?: Record<string, any>
 }
@@ -95,7 +95,7 @@ export interface ChatConversationUpdate {
 }
 
 export interface UserSettingsUpdate {
-  theme?: 'light' | 'dark'
+  theme?: string // Changed from 'light' | 'dark' to string
   language?: string
   preferences?: Record<string, any>
   updated_at?: string
