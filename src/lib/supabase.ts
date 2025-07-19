@@ -91,7 +91,7 @@ export const realtime = {
     return supabase
       .channel(`${table}-changes`)
       .on(
-        'postgres_changes',
+        'postgres_changes' as any,
         {
           event,
           schema: 'public',
@@ -107,7 +107,7 @@ export const realtime = {
     return supabase
       .channel('user-conversations')
       .on(
-        'postgres_changes',
+        'postgres_changes' as any,
         {
           event: '*',
           schema: 'public',
@@ -124,7 +124,7 @@ export const realtime = {
     return supabase
       .channel(`conversation-${conversationId}-messages`)
       .on(
-        'postgres_changes',
+        'postgres_changes' as any,
         {
           event: '*',
           schema: 'public',

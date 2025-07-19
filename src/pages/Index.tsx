@@ -1,13 +1,16 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import ChatSidebar from '@/components/ChatSidebar';
 import ChatMessage from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
 import TypingIndicator from '@/components/TypingIndicator';
 import ThemeToggle from '@/components/ThemeToggle';
+import { ChatService, type ChatMessage as ServiceChatMessage } from '@/services/chatService';
 
 interface Message {
   id: string;
@@ -19,13 +22,58 @@ interface Message {
 
 const Index = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [currentChatId, setCurrentChatId] = useState('1');
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversationHistory, setConversationHistory] = useState<ServiceChatMessage[]>([]);
+
+  // Create initial conversation when user is available
+  useEffect(() => {
+    if (user && !currentChatId && !authLoading) {
+      createNewConversation();
+    }
+  }, [user, currentChatId, authLoading]);
+
+  const createNewConversation = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to start chatting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const conversation = await ChatService.createConversation(user.id);
+      setCurrentChatId(conversation.id);
+      setMessages([]);
+      setConversationHistory([]);
+      console.log('Created new conversation:', conversation.id);
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create new conversation. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleSendMessage = async (content: string, attachments?: any[]) => {
-    // Add user message
+    if (!user || !currentChatId) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to send messages.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Add user message to UI
     const userMessage: Message = {
       id: Date.now().toString(),
       content,
@@ -37,62 +85,121 @@ const Index = () => {
     setMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
 
-    // AI response simulation
-    setTimeout(() => {
-      let response = '';
-      const lowerContent = content.toLowerCase();
-      
-      if (lowerContent.includes('video') || lowerContent.includes('generate video')) {
-        response = `I can help you create AI-generated videos! Using our Runway API integration, you can create talking head videos, cinematic scenes, product demos, and explainer videos. Would you like me to guide you through the video generation process?`;
-      } else if (lowerContent.includes('fake news') || lowerContent.includes('fact check') || lowerContent.includes('news')) {
-        response = `I can analyze news articles and claims for credibility using advanced AI systems. I can check source verification, detect bias, cross-reference facts, and provide confidence scoring. Please share a news article URL or paste the text you'd like me to analyze.`;
-      } else if (lowerContent.includes('avatar') || lowerContent.includes('generate avatar')) {
-        response = `I can create stunning AI avatars using Runway's Gen-2 API. I can transform your photos into AI avatars, create avatars from text descriptions, and offer various style options including realistic, cartoon, artistic, or professional styles. Upload a photo or describe the avatar you'd like me to create!`;
-      } else if (lowerContent.includes('tools') || lowerContent.includes('features') || lowerContent.includes('what can you do')) {
-        response = `I'm Hobnob AI with these capabilities:
+    try {
+      // Prepare conversation history for OpenAI
+      const chatMessages: ServiceChatMessage[] = [
+        ...conversationHistory,
+        { role: 'user', content }
+      ];
 
-**Core AI Features:**
-• Advanced Chat Assistant (GPT-4o + DeepSeek V3)
-• Smart AI Model Routing
-• Multi-modal Input Support
+      console.log('Sending to OpenAI:', { messageCount: chatMessages.length, currentChatId });
 
-**Professional Tools:**
-• 🎬 Video Generation (Runway API)
-• 🎭 Avatar Creator  
-• 📄 Invoice Generator
-• 📧 Cold Email Writer
-• 🌱 Plant Identifier
-• 🦁 Animal Detector
-• 😊 Mood Analysis
-• 🛡️ Fake News Detection
+      // Call OpenAI through our Edge Function
+      const response = await ChatService.sendMessage(chatMessages, {
+        conversationId: currentChatId,
+        userId: user.id,
+      });
 
-Which tool interests you most?`;
-      } else {
-        response = `I'm processing your request using our Smart AI Router to give you the best response. I can help with a wide variety of tasks including content creation, analysis, problem-solving, and using our professional tools. How can I assist you further?`;
-      }
-
-      const aiResponse: Message = {
+      // Add AI response to UI
+      const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: response,
+        content: response.message,
         role: 'assistant',
         timestamp: new Date(),
       };
       
-      setMessages(prev => [...prev, aiResponse]);
+      setMessages(prev => [...prev, aiMessage]);
+      
+      // Update conversation history
+      setConversationHistory(prev => [
+        ...prev,
+        { role: 'user', content },
+        { role: 'assistant', content: response.message }
+      ]);
+
+      console.log('OpenAI response received:', { 
+        length: response.message.length, 
+        usage: response.usage 
+      });
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      
+      // Add error message to UI
+      const errorMessage: Message = {
+        id: (Date.now() + 2).toString(),
+        content: `I apologize, but I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
+        role: 'assistant',
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+      
+      toast({
+        title: "Error",
+        description: "Failed to get AI response. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const handleNewChat = () => {
-    setMessages([]);
-    setCurrentChatId(Date.now().toString());
+    createNewConversation();
     setSidebarOpen(false);
   };
 
-  const handleChatSelect = (chatId: string) => {
-    setCurrentChatId(chatId);
-    setSidebarOpen(false);
+  const handleChatSelect = async (chatId: string) => {
+    try {
+      setCurrentChatId(chatId);
+      
+      // Load messages for this conversation
+      const dbMessages = await ChatService.getConversationMessages(chatId);
+      
+      // Convert DB messages to UI format
+      const uiMessages: Message[] = dbMessages.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        role: msg.role as 'user' | 'assistant',
+        timestamp: new Date(msg.created_at),
+      }));
+      
+      setMessages(uiMessages);
+      
+      // Build conversation history for OpenAI context
+      const history: ServiceChatMessage[] = dbMessages.map(msg => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      }));
+      
+      setConversationHistory(history);
+      setSidebarOpen(false);
+      
+      console.log('Loaded conversation:', { chatId, messageCount: uiMessages.length });
+      
+    } catch (error) {
+      console.error('Error loading conversation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load conversation.",
+        variant: "destructive",
+      });
+    }
   };
+
+  // Show authentication message if not logged in
+  if (!user && !authLoading) {
+    return (
+      <div className="flex h-screen bg-background text-foreground items-center justify-center">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-bold">Welcome to Hobnob AI</h1>
+          <p className="text-muted-foreground">Please sign in to start chatting with AI.</p>
+          <Button onClick={() => navigate('/auth')}>Sign In</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -100,7 +207,7 @@ Which tool interests you most?`;
       <ChatSidebar
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
-        currentChatId={currentChatId}
+        currentChatId={currentChatId || ''}
         onChatSelect={handleChatSelect}
         onNewChat={handleNewChat}
       />
@@ -121,7 +228,7 @@ Which tool interests you most?`;
               </Button>
               <div className="flex items-center gap-6">
                 <h1 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  Hobnob AI
+                  Hobnob AI {user ? `- ${user.email}` : ''}
                 </h1>
                 <Button
                   variant="ghost"
@@ -140,6 +247,16 @@ Which tool interests you most?`;
         {/* Chat Area */}
         <div className="flex-1 overflow-y-auto pb-32">
           <div className="space-y-0">
+            {messages.length === 0 && !isTyping && (
+              <div className="flex items-center justify-center h-full text-center p-8">
+                <div className="space-y-4">
+                  <h2 className="text-xl font-semibold">Start a conversation</h2>
+                  <p className="text-muted-foreground">
+                    Ask me anything! I'm powered by OpenAI's latest GPT model.
+                  </p>
+                </div>
+              </div>
+            )}
             {messages.map((message) => (
               <ChatMessage key={message.id} message={message} />
             ))}
@@ -148,7 +265,7 @@ Which tool interests you most?`;
         </div>
 
         {/* Input Area */}
-        <ChatInput onSendMessage={handleSendMessage} disabled={isTyping} />
+        <ChatInput onSendMessage={handleSendMessage} disabled={isTyping || !user} />
       </div>
     </div>
   );
