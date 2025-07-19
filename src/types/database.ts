@@ -31,7 +31,7 @@ export interface UserSettings {
   user_id: string
   theme: string // Changed from 'light' | 'dark' to string to match Supabase response
   language: string
-  preferences: Record<string, any>
+  preferences: any // Changed from Record<string, any> to any to handle Json type from Supabase
   created_at: string
   updated_at: string
 }
@@ -70,7 +70,7 @@ export interface UserSettingsInsert {
   user_id: string
   theme?: string // Changed from 'light' | 'dark' to string
   language?: string
-  preferences?: Record<string, any>
+  preferences?: any // Changed from Record<string, any> to any
 }
 
 export interface ToolUsageLogInsert {
@@ -97,7 +97,7 @@ export interface ChatConversationUpdate {
 export interface UserSettingsUpdate {
   theme?: string // Changed from 'light' | 'dark' to string
   language?: string
-  preferences?: Record<string, any>
+  preferences?: any // Changed from Record<string, any> to any
   updated_at?: string
 }
 
