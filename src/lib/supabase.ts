@@ -90,11 +90,15 @@ export const realtime = {
   ) => {
     return supabase
       .channel(`${table}-changes`)
-      .on('postgres_changes', {
-        event,
-        schema: 'public',
-        table
-      }, callback)
+      .on(
+        'postgres_changes',
+        {
+          event,
+          schema: 'public',
+          table
+        },
+        callback
+      )
       .subscribe()
   },
 
@@ -102,12 +106,16 @@ export const realtime = {
   subscribeToUserConversations: (userId: string, callback: (payload: any) => void) => {
     return supabase
       .channel('user-conversations')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'conversations',
-        filter: `user_id=eq.${userId}`
-      }, callback)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'conversations',
+          filter: `user_id=eq.${userId}`
+        },
+        callback
+      )
       .subscribe()
   },
 
@@ -115,12 +123,16 @@ export const realtime = {
   subscribeToConversationMessages: (conversationId: string, callback: (payload: any) => void) => {
     return supabase
       .channel(`conversation-${conversationId}-messages`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'messages',
-        filter: `conversation_id=eq.${conversationId}`
-      }, callback)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        callback
+      )
       .subscribe()
   },
 
