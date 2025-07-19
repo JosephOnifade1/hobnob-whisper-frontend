@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -92,7 +91,7 @@ const Index = () => {
         { role: 'user', content }
       ];
 
-      console.log('Sending to OpenAI:', { messageCount: chatMessages.length, currentChatId });
+      console.log('Sending to OpenAI via Edge Function:', { messageCount: chatMessages.length, currentChatId });
 
       // Call OpenAI through our Edge Function
       const response = await ChatService.sendMessage(chatMessages, {
@@ -117,9 +116,15 @@ const Index = () => {
         { role: 'assistant', content: response.message }
       ]);
 
-      console.log('OpenAI response received:', { 
+      console.log('OpenAI response received successfully:', { 
         length: response.message.length, 
         usage: response.usage 
+      });
+
+      // Show success feedback
+      toast({
+        title: "AI Response Generated",
+        description: `Tokens used: ${response.usage?.total_tokens || 'N/A'}`,
       });
 
     } catch (error) {
@@ -252,7 +257,7 @@ const Index = () => {
                 <div className="space-y-4">
                   <h2 className="text-xl font-semibold">Start a conversation</h2>
                   <p className="text-muted-foreground">
-                    Ask me anything! I'm powered by OpenAI's latest GPT model.
+                    Ask me anything! I'm powered by OpenAI's latest GPT-4.1 model.
                   </p>
                 </div>
               </div>
