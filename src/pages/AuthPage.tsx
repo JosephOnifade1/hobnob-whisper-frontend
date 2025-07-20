@@ -12,13 +12,19 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 
-const authSchema = z.object({
+const signInSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  fullName: z.string().min(2, 'Full name must be at least 2 characters').optional(),
+  password: z.string().min(1, 'Password is required'),
 });
 
-type AuthFormData = z.infer<typeof authSchema>;
+const signUpSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  fullName: z.string().min(2, 'Full name must be at least 2 characters'),
+});
+
+type SignInFormData = z.infer<typeof signInSchema>;
+type SignUpFormData = z.infer<typeof signUpSchema>;
 
 const AuthPage = () => {
   const navigate = useNavigate();
@@ -28,8 +34,16 @@ const AuthPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<AuthFormData>({
-    resolver: zodResolver(authSchema),
+  const signInForm = useForm<SignInFormData>({
+    resolver: zodResolver(signInSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
+
+  const signUpForm = useForm<SignUpFormData>({
+    resolver: zodResolver(signUpSchema),
     defaultValues: {
       email: '',
       password: '',
@@ -37,64 +51,52 @@ const AuthPage = () => {
     },
   });
 
+  const currentForm = isSignUp ? signUpForm : signInForm;
+
   // Redirect if already authenticated
   useEffect(() => {
     if (user && !loading) {
+      console.log('User authenticated, redirecting to home');
       navigate('/');
     }
   }, [user, loading, navigate]);
 
-  const onSubmit = async (data: AuthFormData) => {
+  const onSignIn = async (data: SignInFormData) => {
+    console.log('Attempting sign in with:', data.email);
     setIsSubmitting(true);
     
     try {
-      let result;
-      
-      if (isSignUp) {
-        result = await signUp({
-          email: data.email,
-          password: data.password,
-          fullName: data.fullName,
-        });
-      } else {
-        result = await signIn({
-          email: data.email,
-          password: data.password,
-        });
-      }
+      const result = await signIn({
+        email: data.email,
+        password: data.password,
+      });
+
+      console.log('Sign in result:', result);
 
       if (result.error) {
-        // Handle specific error cases
         let errorMessage = result.error.message;
         
-        if (errorMessage.includes('Email not confirmed')) {
-          errorMessage = 'Please check your email and click the confirmation link before signing in.';
-        } else if (errorMessage.includes('Invalid login credentials')) {
+        if (errorMessage.includes('Invalid login credentials')) {
           errorMessage = 'Invalid email or password. Please check your credentials and try again.';
-        } else if (errorMessage.includes('User already registered')) {
-          errorMessage = 'An account with this email already exists. Please sign in instead.';
+        } else if (errorMessage.includes('Email not confirmed')) {
+          errorMessage = 'Please check your email and click the confirmation link before signing in.';
         }
 
         toast({
-          title: isSignUp ? "Sign Up Failed" : "Sign In Failed",
+          title: "Sign In Failed",
           description: errorMessage,
           variant: "destructive",
         });
-      } else {
+      } else if (result.user) {
+        console.log('Sign in successful, user:', result.user.id);
         toast({
-          title: isSignUp ? "Account Created!" : "Welcome Back!",
-          description: isSignUp 
-            ? "Please check your email for a confirmation link." 
-            : "You have been successfully signed in.",
+          title: "Welcome Back!",
+          description: "You have been successfully signed in.",
         });
-        
-        // Only redirect if sign in was successful and user exists
-        if (!isSignUp && result.user) {
-          navigate('/');
-        }
+        // Navigation will happen automatically via useEffect when user state updates
       }
     } catch (error) {
-      console.error('Auth error:', error);
+      console.error('Sign in error:', error);
       toast({
         title: "Authentication Error",
         description: "An unexpected error occurred. Please try again.",
@@ -105,9 +107,65 @@ const AuthPage = () => {
     }
   };
 
+  const onSignUp = async (data: SignUpFormData) => {
+    console.log('Attempting sign up with:', data.email);
+    setIsSubmitting(true);
+    
+    try {
+      const result = await signUp({
+        email: data.email,
+        password: data.password,
+        fullName: data.fullName,
+      });
+
+      console.log('Sign up result:', result);
+
+      if (result.error) {
+        let errorMessage = result.error.message;
+        
+        if (errorMessage.includes('User already registered')) {
+          errorMessage = 'An account with this email already exists. Please sign in instead.';
+        }
+
+        toast({
+          title: "Sign Up Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Account Created!",
+          description: "Please check your email for a confirmation link.",
+        });
+        
+        // Switch to sign in mode after successful signup
+        setIsSignUp(false);
+        signInForm.reset();
+      }
+    } catch (error) {
+      console.error('Sign up error:', error);
+      toast({
+        title: "Authentication Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const onSubmit = async (data: any) => {
+    if (isSignUp) {
+      await onSignUp(data as SignUpFormData);
+    } else {
+      await onSignIn(data as SignInFormData);
+    }
+  };
+
   const toggleAuthMode = () => {
     setIsSignUp(!isSignUp);
-    form.reset();
+    signInForm.reset();
+    signUpForm.reset();
   };
 
   if (loading) {
@@ -133,11 +191,11 @@ const AuthPage = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <Form {...currentForm}>
+            <form onSubmit={currentForm.handleSubmit(onSubmit)} className="space-y-4">
               {isSignUp && (
                 <FormField
-                  control={form.control}
+                  control={signUpForm.control}
                   name="fullName"
                   render={({ field }) => (
                     <FormItem>
@@ -156,7 +214,7 @@ const AuthPage = () => {
               )}
               
               <FormField
-                control={form.control}
+                control={currentForm.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
@@ -175,7 +233,7 @@ const AuthPage = () => {
               />
               
               <FormField
-                control={form.control}
+                control={currentForm.control}
                 name="password"
                 render={({ field }) => (
                   <FormItem>
