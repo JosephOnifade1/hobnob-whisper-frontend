@@ -59,8 +59,28 @@ serve(async (req) => {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('OpenAI API error:', errorData);
+      
+      // Provide specific error messages based on status code
+      let userFriendlyError = 'Failed to get AI response';
+      
+      if (response.status === 429) {
+        userFriendlyError = 'API rate limit exceeded. Please wait a moment before trying again.';
+      } else if (response.status === 401) {
+        userFriendlyError = 'API authentication failed. Please check your API key.';
+      } else if (response.status === 402) {
+        userFriendlyError = 'API quota exceeded. Please check your OpenAI billing and add credits.';
+      } else if (response.status === 503) {
+        userFriendlyError = 'OpenAI service is temporarily unavailable. Please try again later.';
+      } else if (response.status >= 500) {
+        userFriendlyError = 'OpenAI service error. Please try again later.';
+      }
+      
       return new Response(
-        JSON.stringify({ error: 'Failed to get AI response', details: errorData }),
+        JSON.stringify({ 
+          error: userFriendlyError,
+          statusCode: response.status,
+          details: errorData 
+        }),
         { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

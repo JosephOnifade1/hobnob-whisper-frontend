@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Menu } from 'lucide-react';
+import { Menu, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -17,6 +18,8 @@ interface Message {
   role: 'user' | 'assistant';
   timestamp: Date;
   attachments?: any[];
+  isError?: boolean;
+  canRetry?: boolean;
 }
 
 const Index = () => {
@@ -28,6 +31,7 @@ const Index = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversationHistory, setConversationHistory] = useState<ServiceChatMessage[]>([]);
+  const [lastUserMessage, setLastUserMessage] = useState<string>('');
 
   // Create initial conversation when user is available
   useEffect(() => {
@@ -62,7 +66,7 @@ const Index = () => {
     }
   };
 
-  const handleSendMessage = async (content: string, attachments?: any[]) => {
+  const sendMessageToAI = async (content: string, isRetry: boolean = false) => {
     if (!user || !currentChatId) {
       toast({
         title: "Authentication Required",
@@ -72,16 +76,6 @@ const Index = () => {
       return;
     }
 
-    // Add user message to UI
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content,
-      role: 'user',
-      timestamp: new Date(),
-      attachments,
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
 
     try {
@@ -91,7 +85,7 @@ const Index = () => {
         { role: 'user', content }
       ];
 
-      console.log('Sending to OpenAI via Edge Function:', { messageCount: chatMessages.length, currentChatId });
+      console.log('Sending to OpenAI via Edge Function:', { messageCount: chatMessages.length, currentChatId, isRetry });
 
       // Call OpenAI through our Edge Function
       const response = await ChatService.sendMessage(chatMessages, {
@@ -107,7 +101,13 @@ const Index = () => {
         timestamp: new Date(),
       };
       
-      setMessages(prev => [...prev, aiMessage]);
+      setMessages(prev => {
+        // If this is a retry, remove the last error message
+        if (isRetry) {
+          return [...prev.slice(0, -1), aiMessage];
+        }
+        return [...prev, aiMessage];
+      });
       
       // Update conversation history
       setConversationHistory(prev => [
@@ -121,32 +121,84 @@ const Index = () => {
         usage: response.usage 
       });
 
-      // Show success feedback
-      toast({
-        title: "AI Response Generated",
-        description: `Tokens used: ${response.usage?.total_tokens || 'N/A'}`,
-      });
+      // Show success feedback for retries
+      if (isRetry) {
+        toast({
+          title: "Success!",
+          description: "Message sent successfully after retry.",
+        });
+      }
 
     } catch (error) {
       console.error('Error sending message:', error);
       
+      // Determine error message and retry capability
+      let errorMessage = "I apologize, but I encountered an error. Please try again.";
+      let canRetry = true;
+      
+      if (error instanceof Error) {
+        if (error.message.includes('rate limit') || error.message.includes('429')) {
+          errorMessage = "I'm receiving too many requests right now. Please wait a moment and try again.";
+        } else if (error.message.includes('quota exceeded') || error.message.includes('402')) {
+          errorMessage = "The AI service quota has been exceeded. Please check your OpenAI billing or try again later.";
+          canRetry = false;
+        } else if (error.message.includes('authentication') || error.message.includes('401')) {
+          errorMessage = "There's an authentication issue with the AI service. Please contact support.";
+          canRetry = false;
+        } else if (error.message.includes('temporarily unavailable') || error.message.includes('503')) {
+          errorMessage = "The AI service is temporarily unavailable. Please try again in a few minutes.";
+        } else {
+          errorMessage = `I encountered an error: ${error.message}. Please try again.`;
+        }
+      }
+      
       // Add error message to UI
-      const errorMessage: Message = {
+      const errorMessage_obj: Message = {
         id: (Date.now() + 2).toString(),
-        content: `I apologize, but I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
+        content: errorMessage,
         role: 'assistant',
         timestamp: new Date(),
+        isError: true,
+        canRetry: canRetry,
       };
       
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => {
+        // If this is a retry, replace the last error message
+        if (isRetry) {
+          return [...prev.slice(0, -1), errorMessage_obj];
+        }
+        return [...prev, errorMessage_obj];
+      });
       
       toast({
         title: "Error",
-        description: "Failed to get AI response. Please try again.",
+        description: canRetry ? "Failed to get AI response. You can try again." : "Service unavailable. Please try again later.",
         variant: "destructive",
       });
     } finally {
       setIsTyping(false);
+    }
+  };
+
+  const handleSendMessage = async (content: string, attachments?: any[]) => {
+    // Add user message to UI
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content,
+      role: 'user',
+      timestamp: new Date(),
+      attachments,
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    setLastUserMessage(content);
+    
+    await sendMessageToAI(content);
+  };
+
+  const handleRetryMessage = async () => {
+    if (lastUserMessage) {
+      await sendMessageToAI(lastUserMessage, true);
     }
   };
 
@@ -262,8 +314,24 @@ const Index = () => {
                 </div>
               </div>
             )}
-            {messages.map((message) => (
-              <ChatMessage key={message.id} message={message} />
+            {messages.map((message, index) => (
+              <div key={message.id}>
+                <ChatMessage message={message} />
+                {message.isError && message.canRetry && index === messages.length - 1 && (
+                  <div className="flex justify-center py-4">
+                    <Button
+                      onClick={handleRetryMessage}
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      disabled={isTyping}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Try Again
+                    </Button>
+                  </div>
+                )}
+              </div>
             ))}
             {isTyping && <TypingIndicator />}
           </div>
