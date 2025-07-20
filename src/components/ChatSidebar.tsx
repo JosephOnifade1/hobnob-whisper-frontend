@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { MessageSquare, Plus, Settings, Menu, X, Trash2, Edit3, User, Crown, Bot } from 'lucide-react';
+import { MessageSquare, Plus, Settings, Menu, X, Trash2, Edit3, User, Crown, Bot, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ChatSession {
   id: string;
@@ -26,6 +27,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onNewChat
 }) => {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
   const [chatSessions] = useState<ChatSession[]>([
     { id: '1', title: 'Getting started with AI', timestamp: new Date() },
     { id: '2', title: 'Creative writing tips', timestamp: new Date(Date.now() - 86400000) },
@@ -36,6 +38,15 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     { icon: MessageSquare, label: 'Chat', path: '/' },
     { icon: Bot, label: 'AI Agent', path: '/ai-agent' },
   ];
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/auth');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   return (
     <>
@@ -155,6 +166,14 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           >
             <Settings className="h-4 w-4 mr-3" />
             Admin Dashboard
+          </Button>
+          <Button 
+            onClick={handleLogout}
+            variant="ghost" 
+            className="w-full justify-start text-gray-300 hover:text-white hover:bg-gray-800"
+          >
+            <LogOut className="h-4 w-4 mr-3" />
+            Log Out
           </Button>
         </div>
       </div>
