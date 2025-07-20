@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
+import AuthPage from "./pages/AuthPage";
 import VideoGeneration from "./pages/VideoGeneration";
 import FakeNewsDetection from "./pages/FakeNewsDetection";
 import AccountSettings from "./pages/AccountSettings";
@@ -40,6 +41,7 @@ const App = () => {
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<AuthPage />} />
               <Route path="/video-generation" element={<VideoGeneration />} />
               <Route path="/fake-news-detection" element={<FakeNewsDetection />} />
               <Route path="/account" element={<AccountSettings />} />
