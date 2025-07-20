@@ -42,13 +42,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
-      const { session, error } = await auth.getCurrentSession()
-      if (session && !error) {
-        setSession(session)
-        setUser(session.user)
-        await loadUserData(session.user.id)
+      try {
+        const { session, error } = await auth.getCurrentSession()
+        if (session && !error) {
+          setSession(session)
+          setUser(session.user)
+          await loadUserData(session.user.id)
+        }
+      } catch (error) {
+        console.error('Error getting initial session:', error)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
 
     getInitialSession()
@@ -61,7 +66,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(session?.user ?? null)
       
       if (session?.user) {
-        await loadUserData(session.user.id)
+        // Use setTimeout to avoid potential deadlocks
+        setTimeout(() => {
+          loadUserData(session.user.id)
+        }, 0)
       } else {
         setProfile(null)
         setSettings(null)
@@ -112,13 +120,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   const signOut = async (): Promise<void> => {
+    console.log('Signing out user...')
     setLoading(true)
     try {
-      await auth.signOut()
+      const { error } = await auth.signOut()
+      if (error) {
+        console.error('Sign out error:', error)
+        throw error
+      }
+      
+      // Clear all state immediately
       setUser(null)
       setSession(null)
       setProfile(null)
       setSettings(null)
+      
+      console.log('User signed out successfully')
+    } catch (error) {
+      console.error('Sign out failed:', error)
+      throw error
     } finally {
       setLoading(false)
     }

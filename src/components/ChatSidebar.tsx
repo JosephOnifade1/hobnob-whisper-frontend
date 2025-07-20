@@ -1,9 +1,9 @@
-
 import React, { useState } from 'react';
 import { MessageSquare, Plus, Settings, Menu, X, Trash2, Edit3, User, Crown, Bot, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
 
 interface ChatSession {
   id: string;
@@ -28,6 +28,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 }) => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
+  const { toast } = useToast();
   const [chatSessions] = useState<ChatSession[]>([
     { id: '1', title: 'Getting started with AI', timestamp: new Date() },
     { id: '2', title: 'Creative writing tips', timestamp: new Date(Date.now() - 86400000) },
@@ -40,11 +41,22 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   ];
 
   const handleLogout = async () => {
+    console.log('Logout button clicked');
     try {
       await signOut();
+      console.log('Sign out completed, navigating to auth page');
       navigate('/auth');
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+      });
     } catch (error) {
       console.error('Logout failed:', error);
+      toast({
+        title: "Logout Failed",
+        description: "There was an error logging you out. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
