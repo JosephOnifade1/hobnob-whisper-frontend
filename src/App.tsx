@@ -8,11 +8,9 @@ import { useEffect } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
-import VideoGeneration from "./pages/VideoGeneration";
-import FakeNewsDetection from "./pages/FakeNewsDetection";
 import AccountSettings from "./pages/AccountSettings";
-import ExploreTools from "./pages/ExploreTools";
 import AdminDashboard from "./pages/AdminDashboard";
+import AIAgent from "./pages/AIAgent";
 import NotFound from "./pages/NotFound";
 import ToolsDashboard from "./pages/ToolsDashboard";
 import AvatarGenerator from "./pages/AvatarGenerator";
@@ -42,10 +40,8 @@ const App = () => {
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<AuthPage />} />
-              <Route path="/video-generation" element={<VideoGeneration />} />
-              <Route path="/fake-news-detection" element={<FakeNewsDetection />} />
+              <Route path="/ai-agent" element={<AIAgent />} />
               <Route path="/account" element={<AccountSettings />} />
-              <Route path="/explore" element={<ExploreTools />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/tools" element={<ToolsDashboard />} />
               <Route path="/tools/avatar-generator" element={<AvatarGenerator />} />

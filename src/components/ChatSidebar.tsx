@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { MessageSquare, Plus, Settings, Menu, X, Trash2, Edit3, Video, Shield, Compass, User, Crown } from 'lucide-react';
+import { MessageSquare, Plus, Settings, Menu, X, Trash2, Edit3, User, Crown, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
@@ -34,9 +34,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
   const navigationItems = [
     { icon: MessageSquare, label: 'Chat', path: '/' },
-    { icon: Video, label: 'Video Generation', path: '/video-generation' },
-    { icon: Shield, label: 'Fake News Detection', path: '/fake-news-detection' },
-    { icon: Compass, label: 'Explore Tools', path: '/explore' },
+    { icon: Bot, label: 'AI Agent', path: '/ai-agent' },
   ];
 
   return (
