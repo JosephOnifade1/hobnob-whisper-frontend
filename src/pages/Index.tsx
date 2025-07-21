@@ -14,7 +14,6 @@ import GuestMode from '@/components/GuestMode';
 import ModelSelector from '@/components/ModelSelector';
 import { ChatService, type ChatMessage as ServiceChatMessage } from '@/services/chatService';
 import { AIService, AIProvider } from '@/services/aiService';
-
 interface Message {
   id: string;
   content: string;
@@ -25,19 +24,23 @@ interface Message {
   canRetry?: boolean;
   provider?: AIProvider;
 }
-
 const Index = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user, loading: authLoading, initializing } = useAuth();
-  const { 
-    createConversation, 
+  const {
+    toast
+  } = useToast();
+  const {
+    user,
+    loading: authLoading,
+    initializing
+  } = useAuth();
+  const {
+    createConversation,
     createConversationWithMessage,
     getCurrentConversationId,
     setCurrentConversationId,
-    conversations 
+    conversations
   } = useConversations();
-  
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
@@ -48,27 +51,26 @@ const Index = () => {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [showGuestMode, setShowGuestMode] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<AIProvider>(AIService.getDefaultProvider());
-  
+
   // Refs for auto-scrolling
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
-  
+
   // Auto-scroll to bottom when new messages are added
   const scrollToBottom = useCallback(() => {
     if (lastMessageRef.current) {
-      lastMessageRef.current.scrollIntoView({ 
+      lastMessageRef.current.scrollIntoView({
         behavior: 'smooth',
         block: 'end'
       });
     }
   }, []);
-  
+
   // Scroll to bottom when messages change or typing starts
   useEffect(() => {
     const timer = setTimeout(() => {
       scrollToBottom();
     }, 100);
-    
     return () => clearTimeout(timer);
   }, [messages, isTyping, scrollToBottom]);
 
@@ -78,7 +80,7 @@ const Index = () => {
     AIService.setDefaultProvider(provider);
     toast({
       title: "AI Model Changed",
-      description: `Switched to ${provider === 'openai' ? 'OpenAI GPT-4.1' : 'DeepSeek V3'}`,
+      description: `Switched to ${provider === 'openai' ? 'OpenAI GPT-4.1' : 'DeepSeek V3'}`
     });
   };
 
@@ -86,7 +88,6 @@ const Index = () => {
   useEffect(() => {
     if (user && !initializing && conversations.length > 0 && !isRestoringState && !currentChatId) {
       const savedConversationId = getCurrentConversationId();
-      
       if (savedConversationId && conversations.find(conv => conv.id === savedConversationId)) {
         console.log('Restoring conversation state:', savedConversationId);
         setIsRestoringState(true);
@@ -104,17 +105,15 @@ const Index = () => {
       }
     }
   }, [user, initializing, conversations, currentChatId, isRestoringState]);
-
   const createNewConversation = async () => {
     if (!user) {
       toast({
         title: "Authentication Required",
         description: "Please sign in to start chatting.",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     try {
       const conversation = await createConversation();
       if (conversation) {
@@ -129,26 +128,23 @@ const Index = () => {
       toast({
         title: "Error",
         description: "Failed to create new conversation. Please try again.",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const sendMessageToAI = async (content: string, isRetry: boolean = false) => {
     if (!user || !currentChatId || isSendingMessage) {
       if (!user) {
         toast({
           title: "Authentication Required",
           description: "Please sign in to send messages.",
-          variant: "destructive",
+          variant: "destructive"
         });
       }
       return;
     }
-
     setIsSendingMessage(true);
     setIsTyping(true);
-
     try {
       // Save user message to database only if not a retry
       if (!isRetry) {
@@ -156,23 +152,22 @@ const Index = () => {
       }
 
       // Prepare conversation history for AI
-      const chatMessages: ServiceChatMessage[] = [
-        ...conversationHistory,
-        { role: 'user', content }
-      ];
-
-      console.log('Sending to AI via unified service:', { 
-        messageCount: chatMessages.length, 
-        currentChatId, 
+      const chatMessages: ServiceChatMessage[] = [...conversationHistory, {
+        role: 'user',
+        content
+      }];
+      console.log('Sending to AI via unified service:', {
+        messageCount: chatMessages.length,
+        currentChatId,
         isRetry,
-        provider: selectedProvider 
+        provider: selectedProvider
       });
 
       // Call AI through our unified service
       const response = await AIService.sendMessage(chatMessages, {
         conversationId: currentChatId,
         userId: user.id,
-        provider: selectedProvider,
+        provider: selectedProvider
       });
 
       // Save AI response to database
@@ -180,7 +175,10 @@ const Index = () => {
 
       // Update conversation title if it's the first exchange
       if (conversationHistory.length === 0 && !isRetry) {
-        const title = await ChatService.generateTitle([{ role: 'user', content }]);
+        const title = await ChatService.generateTitle([{
+          role: 'user',
+          content
+        }]);
         await ChatService.updateConversationTitle(currentChatId, title);
         console.log('Updated conversation title to:', title);
       }
@@ -191,9 +189,8 @@ const Index = () => {
         content: response.message,
         role: 'assistant',
         timestamp: new Date(),
-        provider: response.provider,
+        provider: response.provider
       };
-      
       setMessages(prev => {
         if (isRetry) {
           // Remove the last error message and add the new response
@@ -201,39 +198,39 @@ const Index = () => {
         }
         return [...prev, aiMessage];
       });
-      
+
       // Update conversation history
       setConversationHistory(prev => {
         if (isRetry) {
           // For retries, just update with the new AI response
-          return [...prev, { role: 'assistant', content: response.message }];
+          return [...prev, {
+            role: 'assistant',
+            content: response.message
+          }];
         }
-        return [
-          ...prev,
-          { role: 'user', content },
-          { role: 'assistant', content: response.message }
-        ];
+        return [...prev, {
+          role: 'user',
+          content
+        }, {
+          role: 'assistant',
+          content: response.message
+        }];
       });
-
-      console.log('AI response received successfully:', { 
-        length: response.message.length, 
+      console.log('AI response received successfully:', {
+        length: response.message.length,
         usage: response.usage,
-        provider: response.provider 
+        provider: response.provider
       });
-
       if (isRetry) {
         toast({
           title: "Success!",
-          description: `Message sent successfully using ${response.provider === 'openai' ? 'OpenAI' : 'DeepSeek'}.`,
+          description: `Message sent successfully using ${response.provider === 'openai' ? 'OpenAI' : 'DeepSeek'}.`
         });
       }
-
     } catch (error) {
       console.error('Error sending message:', error);
-      
       let errorMessage = "I apologize, but I encountered an error. Please try again.";
       let canRetry = true;
-      
       if (error instanceof Error) {
         if (error.message.includes('rate limit') || error.message.includes('429')) {
           errorMessage = "I'm receiving too many requests right now. Please wait a moment and try again.";
@@ -249,56 +246,51 @@ const Index = () => {
           errorMessage = `I encountered an error: ${error.message}. Please try again.`;
         }
       }
-      
       const errorMessage_obj: Message = {
         id: `error-${Date.now()}`,
         content: errorMessage,
         role: 'assistant',
         timestamp: new Date(),
         isError: true,
-        canRetry: canRetry,
+        canRetry: canRetry
       };
-      
       setMessages(prev => {
         if (isRetry) {
           return [...prev.slice(0, -1), errorMessage_obj];
         }
         return [...prev, errorMessage_obj];
       });
-      
       toast({
         title: "Error",
         description: canRetry ? "Failed to get AI response. You can try again." : "Service unavailable. Please try again later.",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsTyping(false);
       setIsSendingMessage(false);
     }
   };
-
   const handleSendMessage = async (content: string, attachments?: any[]) => {
     if (isSendingMessage) return; // Prevent duplicate sends
-    
+
     // Create new conversation with the first message if none exists
     if (!currentChatId) {
       const conversation = await createConversationWithMessage(content);
       if (conversation) {
         setCurrentChatId(conversation.id);
         setCurrentConversationId(conversation.id);
-        
+
         // Add user message to UI
         const userMessage: Message = {
           id: `user-${Date.now()}`,
           content,
           role: 'user',
           timestamp: new Date(),
-          attachments,
+          attachments
         };
-        
         setMessages([userMessage]);
         setLastUserMessage(content);
-        
+
         // Send to AI after conversation is created
         await sendMessageToAI(content);
       }
@@ -311,77 +303,69 @@ const Index = () => {
       content,
       role: 'user',
       timestamp: new Date(),
-      attachments,
+      attachments
     };
-    
     setMessages(prev => [...prev, userMessage]);
     setLastUserMessage(content);
-    
     await sendMessageToAI(content);
   };
-
   const handleRetryMessage = async () => {
     if (lastUserMessage && !isSendingMessage) {
       await sendMessageToAI(lastUserMessage, true);
     }
   };
-
   const handleNewChat = () => {
     createNewConversation();
     setSidebarOpen(false);
   };
-
   const handleChatSelect = async (chatId: string) => {
     if (chatId === currentChatId) return; // Prevent reloading the same chat
-    
+
     try {
       setCurrentChatId(chatId);
       setCurrentConversationId(chatId);
-      
+
       // Load messages for this conversation
       const dbMessages = await ChatService.getConversationMessages(chatId);
-      
+
       // Convert DB messages to UI format
       const uiMessages: Message[] = dbMessages.map(msg => ({
         id: msg.id,
         content: msg.content,
         role: msg.role as 'user' | 'assistant',
-        timestamp: new Date(msg.created_at),
+        timestamp: new Date(msg.created_at)
       }));
-      
       setMessages(uiMessages);
-      
+
       // Build conversation history for OpenAI context
       const history: ServiceChatMessage[] = dbMessages.map(msg => ({
         role: msg.role as 'user' | 'assistant',
-        content: msg.content,
+        content: msg.content
       }));
-      
       setConversationHistory(history);
       setSidebarOpen(false);
-      
-      console.log('Loaded conversation:', { chatId, messageCount: uiMessages.length });
-      
+      console.log('Loaded conversation:', {
+        chatId,
+        messageCount: uiMessages.length
+      });
     } catch (error) {
       console.error('Error loading conversation:', error);
       toast({
         title: "Error",
         description: "Failed to load conversation.",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
 
   // Show loading state during initialization
   if (initializing) {
-    return (
-      <div className="flex h-screen bg-background text-foreground items-center justify-center">
+    return <div className="flex h-screen bg-background text-foreground items-center justify-center">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto"></div>
           <p className="text-muted-foreground">Loading...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
 
   // Show guest mode if user chooses to continue as guest
@@ -391,8 +375,7 @@ const Index = () => {
 
   // Show authentication options if not logged in
   if (!user && !authLoading) {
-    return (
-      <div className="flex h-screen bg-background text-foreground items-center justify-center">
+    return <div className="flex h-screen bg-background text-foreground items-center justify-center">
         <div className="text-center space-y-6 max-w-md p-8">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
             Welcome to Hobnob AI
@@ -402,11 +385,7 @@ const Index = () => {
           </p>
           
           <div className="space-y-4">
-            <Button 
-              onClick={() => navigate('/auth')} 
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3"
-              size="lg"
-            >
+            <Button onClick={() => navigate('/auth')} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3" size="lg">
               Sign In / Sign Up
             </Button>
             
@@ -416,34 +395,18 @@ const Index = () => {
               <div className="flex-1 border-t border-border"></div>
             </div>
             
-            <Button 
-              onClick={() => setShowGuestMode(true)}
-              variant="outline" 
-              className="w-full py-3"
-              size="lg"
-            >
+            <Button onClick={() => setShowGuestMode(true)} variant="outline" className="w-full py-3" size="lg">
               Continue as Guest
             </Button>
             
-            <p className="text-xs text-muted-foreground">
-              Guest mode: Limited to 10 messages per day. No file uploads or conversation history.
-            </p>
+            <p className="text-xs text-muted-foreground">Guest mode: No file uploads or conversation history.</p>
           </div>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="flex h-screen bg-background text-foreground">
+  return <div className="flex h-screen bg-background text-foreground">
       {/* Sidebar */}
-      <ChatSidebar
-        isOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen(!sidebarOpen)}
-        currentChatId={currentChatId || ''}
-        onChatSelect={handleChatSelect}
-        onNewChat={handleNewChat}
-      />
+      <ChatSidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} currentChatId={currentChatId || ''} onChatSelect={handleChatSelect} onNewChat={handleNewChat} />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col lg:ml-0">
@@ -451,35 +414,20 @@ const Index = () => {
         <div className="bg-card border-b border-border p-4 backdrop-blur-md bg-opacity-80">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden text-muted-foreground hover:text-foreground hover:bg-accent"
-              >
+              <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(true)} className="lg:hidden text-muted-foreground hover:text-foreground hover:bg-accent">
                 <Menu className="h-5 w-5" />
               </Button>
               <div className="flex items-center gap-6">
                 <h1 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                   Hobnob AI {user ? `- ${user.email}` : ''}
                 </h1>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/tools')}
-                  className="text-muted-foreground hover:text-foreground hover:bg-accent"
-                >
+                <Button variant="ghost" size="sm" onClick={() => navigate('/tools')} className="text-muted-foreground hover:text-foreground hover:bg-accent">
                   Tools Dashboard
                 </Button>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <ModelSelector
-                selectedProvider={selectedProvider}
-                onProviderChange={handleProviderChange}
-                disabled={isTyping || isSendingMessage}
-                compact
-              />
+              <ModelSelector selectedProvider={selectedProvider} onProviderChange={handleProviderChange} disabled={isTyping || isSendingMessage} compact />
               <ThemeToggle />
             </div>
           </div>
@@ -488,69 +436,41 @@ const Index = () => {
         {/* Chat Area */}
         <div ref={chatContainerRef} className="flex-1 overflow-y-auto pb-32">
           <div className="space-y-0">
-            {messages.length === 0 && !isTyping && !isRestoringState && (
-              <div className="flex items-center justify-center h-full text-center p-8">
+            {messages.length === 0 && !isTyping && !isRestoringState && <div className="flex items-center justify-center h-full text-center p-8">
                 <div className="space-y-4">
                   <h2 className="text-xl font-semibold">Start a conversation</h2>
                   <p className="text-muted-foreground">
                     Ask me anything! Choose between OpenAI GPT-4.1 or DeepSeek V3 models.
                   </p>
-                  <ModelSelector
-                    selectedProvider={selectedProvider}
-                    onProviderChange={handleProviderChange}
-                    disabled={isTyping || isSendingMessage}
-                  />
+                  <ModelSelector selectedProvider={selectedProvider} onProviderChange={handleProviderChange} disabled={isTyping || isSendingMessage} />
                 </div>
-              </div>
-            )}
+              </div>}
             
-            {isRestoringState && (
-              <div className="flex items-center justify-center h-full text-center p-8">
+            {isRestoringState && <div className="flex items-center justify-center h-full text-center p-8">
                 <div className="space-y-4">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto"></div>
                   <p className="text-muted-foreground">Restoring conversation...</p>
                 </div>
-              </div>
-            )}
+              </div>}
             
-            {messages.map((message, index) => (
-              <div key={message.id} className="group">
-                <ChatMessage 
-                  message={message} 
-                  ref={index === messages.length - 1 ? lastMessageRef : null}
-                />
-                {message.isError && message.canRetry && index === messages.length - 1 && (
-                  <div className="flex justify-center py-4">
-                    <Button
-                      onClick={handleRetryMessage}
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                      disabled={isTyping || isSendingMessage}
-                    >
+            {messages.map((message, index) => <div key={message.id} className="group">
+                <ChatMessage message={message} ref={index === messages.length - 1 ? lastMessageRef : null} />
+                {message.isError && message.canRetry && index === messages.length - 1 && <div className="flex justify-center py-4">
+                    <Button onClick={handleRetryMessage} variant="outline" size="sm" className="gap-2" disabled={isTyping || isSendingMessage}>
                       <RefreshCw className="h-4 w-4" />
                       Try Again
                     </Button>
-                  </div>
-                )}
-              </div>
-            ))}
-            {isTyping && (
-              <div ref={lastMessageRef}>
+                  </div>}
+              </div>)}
+            {isTyping && <div ref={lastMessageRef}>
                 <TypingIndicator />
-              </div>
-            )}
+              </div>}
           </div>
         </div>
 
         {/* Input Area */}
-        <ChatInput 
-          onSendMessage={handleSendMessage} 
-          disabled={isTyping || !user || isRestoringState || isSendingMessage} 
-        />
+        <ChatInput onSendMessage={handleSendMessage} disabled={isTyping || !user || isRestoringState || isSendingMessage} />
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
