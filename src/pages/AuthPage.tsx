@@ -1,57 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
-
-const signInSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(1, 'Password is required'),
-});
-
-const signUpSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  fullName: z.string().min(2, 'Full name must be at least 2 characters'),
-});
-
-type SignInFormData = z.infer<typeof signInSchema>;
-type SignUpFormData = z.infer<typeof signUpSchema>;
+import { Loader2 } from 'lucide-react';
+import SignUpForm from '@/components/SignUpForm';
+import SignInForm from '@/components/SignInForm';
 
 const AuthPage = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user, signIn, signUp, loading, initializing } = useAuth();
+  const { user, loading, initializing } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const signInForm = useForm<SignInFormData>({
-    resolver: zodResolver(signInSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
-    mode: 'onChange',
-  });
-
-  const signUpForm = useForm<SignUpFormData>({
-    resolver: zodResolver(signUpSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-      fullName: '',
-    },
-    mode: 'onChange',
-  });
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -61,108 +20,13 @@ const AuthPage = () => {
     }
   }, [user, loading, initializing, navigate]);
 
-  const onSignIn = async (data: SignInFormData) => {
-    console.log('Attempting sign in with:', data.email);
-    setIsSubmitting(true);
-    
-    try {
-      const result = await signIn({
-        email: data.email,
-        password: data.password,
-      });
-
-      console.log('Sign in result:', result);
-
-      if (result.error) {
-        let errorMessage = result.error.message;
-        
-        if (errorMessage.includes('Invalid login credentials')) {
-          errorMessage = 'Invalid email or password. Please check your credentials and try again.';
-        } else if (errorMessage.includes('Email not confirmed')) {
-          errorMessage = 'Please check your email and click the confirmation link before signing in.';
-        }
-
-        toast({
-          title: "Sign In Failed",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      } else if (result.user) {
-        console.log('Sign in successful, user:', result.user.id);
-        toast({
-          title: "Welcome Back!",
-          description: "You have been successfully signed in.",
-        });
-        // Navigation will happen automatically via useEffect when user state updates
-      }
-    } catch (error) {
-      console.error('Sign in error:', error);
-      toast({
-        title: "Authentication Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const onSignUp = async (data: SignUpFormData) => {
-    console.log('Attempting sign up with:', data.email, data.fullName);
-    setIsSubmitting(true);
-    
-    try {
-      const result = await signUp({
-        email: data.email,
-        password: data.password,
-        fullName: data.fullName,
-      });
-
-      console.log('Sign up result:', result);
-
-      if (result.error) {
-        let errorMessage = result.error.message;
-        
-        if (errorMessage.includes('User already registered')) {
-          errorMessage = 'An account with this email already exists. Please sign in instead.';
-        } else if (errorMessage.includes('Password should be at least 6 characters')) {
-          errorMessage = 'Password must be at least 6 characters long.';
-        }
-
-        toast({
-          title: "Sign Up Failed",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Account Created!",
-          description: "Please check your email for a confirmation link.",
-        });
-        
-        // Switch to sign in mode after successful signup
-        setIsSignUp(false);
-        signInForm.reset();
-        signUpForm.reset();
-      }
-    } catch (error) {
-      console.error('Sign up error:', error);
-      toast({
-        title: "Authentication Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleAuthSuccess = () => {
+    // Navigation will happen automatically via useEffect when user state updates
+    console.log('Authentication successful');
   };
 
   const toggleAuthMode = () => {
     setIsSignUp(!isSignUp);
-    signInForm.reset();
-    signUpForm.reset();
-    setShowPassword(false);
-    setIsSubmitting(false); // Reset submitting state when switching modes
   };
 
   // Show loading while initializing
@@ -199,191 +63,16 @@ const AuthPage = () => {
         </CardHeader>
         <CardContent>
           {isSignUp ? (
-            <Form {...signUpForm}>
-              <form onSubmit={signUpForm.handleSubmit(onSignUp)} className="space-y-4">
-                <FormField
-                  control={signUpForm.control}
-                  name="fullName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="Enter your full name" 
-                          {...field} 
-                          disabled={isSubmitting}
-                          autoComplete="name"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={signUpForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="email" 
-                          placeholder="Enter your email" 
-                          {...field} 
-                          disabled={isSubmitting}
-                          autoComplete="email"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={signUpForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input 
-                            type={showPassword ? "text" : "password"} 
-                            placeholder="Enter your password" 
-                            {...field} 
-                            disabled={isSubmitting}
-                            autoComplete="new-password"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                            onClick={() => setShowPassword(!showPassword)}
-                            disabled={isSubmitting}
-                            tabIndex={-1}
-                          >
-                            {showPassword ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating Account...
-                    </>
-                  ) : (
-                    'Create Account'
-                  )}
-                </Button>
-              </form>
-            </Form>
+            <SignUpForm 
+              onSuccess={handleAuthSuccess}
+              onSwitchToSignIn={() => setIsSignUp(false)}
+            />
           ) : (
-            <Form {...signInForm}>
-              <form onSubmit={signInForm.handleSubmit(onSignIn)} className="space-y-4">
-                <FormField
-                  control={signInForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="email" 
-                          placeholder="Enter your email" 
-                          {...field} 
-                          disabled={isSubmitting}
-                          autoComplete="email"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={signInForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input 
-                            type={showPassword ? "text" : "password"} 
-                            placeholder="Enter your password" 
-                            {...field} 
-                            disabled={isSubmitting}
-                            autoComplete="current-password"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                            onClick={() => setShowPassword(!showPassword)}
-                            disabled={isSubmitting}
-                            tabIndex={-1}
-                          >
-                            {showPassword ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Signing In...
-                    </>
-                  ) : (
-                    'Sign In'
-                  )}
-                </Button>
-              </form>
-            </Form>
+            <SignInForm 
+              onSuccess={handleAuthSuccess}
+              onSwitchToSignUp={() => setIsSignUp(true)}
+            />
           )}
-          
-          <div className="mt-4 text-center text-sm">
-            <span className="text-muted-foreground">
-              {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-            </span>
-            <Button
-              variant="link"
-              className="ml-1 p-0 font-semibold"
-              onClick={toggleAuthMode}
-              disabled={isSubmitting}
-            >
-              {isSignUp ? 'Sign In' : 'Sign Up'}
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>
