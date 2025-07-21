@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useGuestChat } from '@/contexts/GuestChatContext';
 import { GuestChatService } from '@/services/guestChatService';
 import ChatMessage from '@/components/ChatMessage';
@@ -271,7 +271,6 @@ const GuestMode = () => {
         <ChatInput 
           onSendMessage={handleSendMessage} 
           disabled={isTyping || isSending || remainingMessages <= 0}
-          placeholder={remainingMessages <= 0 ? "Daily limit reached. Sign up for unlimited access!" : "Ask me anything..."}
         />
       </div>
     </div>
