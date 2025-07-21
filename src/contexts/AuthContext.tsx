@@ -11,6 +11,7 @@ interface AuthContextType {
   profile: UserProfile | null
   settings: UserSettings | null
   loading: boolean
+  initializing: boolean
   signUp: (data: SignUpData) => Promise<AuthResponse>
   signIn: (data: SignInData) => Promise<AuthResponse>
   signOut: () => Promise<void>
@@ -37,61 +38,92 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [settings, setSettings] = useState<UserSettings | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [initializing, setInitializing] = useState(true)
 
   useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
+    let isMounted = true
+
+    const initializeAuth = async () => {
       try {
-        const { session, error } = await auth.getCurrentSession()
-        if (session && !error) {
-          setSession(session)
-          setUser(session.user)
-          await loadUserData(session.user.id)
+        console.log('Initializing authentication...')
+        
+        // Get initial session
+        const { session: initialSession, error } = await auth.getCurrentSession()
+        
+        if (!isMounted) return
+
+        if (initialSession && !error) {
+          console.log('Found existing session:', initialSession.user.id)
+          setSession(initialSession)
+          setUser(initialSession.user)
+          
+          // Load user data after setting session
+          await loadUserData(initialSession.user.id)
+        } else {
+          console.log('No existing session found')
         }
       } catch (error) {
-        console.error('Error getting initial session:', error)
+        console.error('Error initializing auth:', error)
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setInitializing(false)
+        }
       }
     }
 
-    getInitialSession()
-
-    // Listen for auth changes
+    // Set up auth state listener
     const { data: { subscription } } = auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return
+
       console.log('Auth state changed:', event, session?.user?.id)
       
       setSession(session)
       setUser(session?.user ?? null)
       
       if (session?.user) {
-        // Use setTimeout to avoid potential deadlocks
-        setTimeout(() => {
-          loadUserData(session.user.id)
+        // Load user data when user signs in
+        setTimeout(async () => {
+          if (isMounted) {
+            await loadUserData(session.user.id)
+          }
         }, 0)
       } else {
+        // Clear user data when user signs out
         setProfile(null)
         setSettings(null)
+        
+        // Clear any stored conversation state
+        localStorage.removeItem('currentConversationId')
+        localStorage.removeItem('conversationState')
       }
       
-      setLoading(false)
+      if (isMounted) {
+        setInitializing(false)
+      }
     })
 
-    return () => subscription.unsubscribe()
+    initializeAuth()
+
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   const loadUserData = async (userId: string) => {
     try {
+      console.log('Loading user data for:', userId)
+      
       // Load user profile
-      const { data: profileData } = await profileService.getById(userId)
-      if (profileData) {
+      const { data: profileData, error: profileError } = await profileService.getById(userId)
+      if (profileData && !profileError) {
         setProfile(profileData)
       }
 
       // Load user settings
-      const { data: settingsData } = await userSettingsService.getByUserId(userId)
-      if (settingsData) {
+      const { data: settingsData, error: settingsError } = await userSettingsService.getByUserId(userId)
+      if (settingsData && !settingsError) {
         setSettings(settingsData)
       }
     } catch (error) {
@@ -123,6 +155,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('Signing out user...')
     setLoading(true)
     try {
+      // Clear stored conversation state before signing out
+      localStorage.removeItem('currentConversationId')
+      localStorage.removeItem('conversationState')
+      
       const { error } = await auth.signOut()
       if (error) {
         console.error('Sign out error:', error)
@@ -172,6 +208,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     profile,
     settings,
     loading,
+    initializing,
     signUp,
     signIn,
     signOut,

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { conversationService, messageService } from '@/services/database';
 import { ChatService } from '@/services/chatService';
@@ -18,17 +18,52 @@ interface Conversation {
 
 export const useConversations = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const { user, initializing } = useAuth();
   const { toast } = useToast();
+  const loadingRef = useRef(false);
+
+  // Store current conversation ID in localStorage for persistence
+  const getCurrentConversationId = () => {
+    if (!user) return null;
+    return localStorage.getItem(`currentConversationId_${user.id}`);
+  };
+
+  const setCurrentConversationId = (conversationId: string | null) => {
+    if (!user) return;
+    if (conversationId) {
+      localStorage.setItem(`currentConversationId_${user.id}`, conversationId);
+    } else {
+      localStorage.removeItem(`currentConversationId_${user.id}`);
+    }
+  };
 
   const loadConversations = async () => {
-    if (!user) return;
+    if (!user || loadingRef.current) return;
+    
+    loadingRef.current = true;
+    setLoading(true);
     
     try {
+      console.log('Loading conversations for user:', user.id);
       const { data, error } = await conversationService.getUserConversations(user.id);
-      if (error) throw error;
-      setConversations(data || []);
+      
+      if (error) {
+        console.error('Error loading conversations:', error);
+        throw error;
+      }
+      
+      const validConversations = data || [];
+      console.log('Loaded conversations:', validConversations.length);
+      
+      setConversations(validConversations);
+      
+      // Clean up stored conversation ID if it no longer exists
+      const currentId = getCurrentConversationId();
+      if (currentId && !validConversations.find(conv => conv.id === currentId)) {
+        setCurrentConversationId(null);
+      }
+      
     } catch (error) {
       console.error('Error loading conversations:', error);
       toast({
@@ -38,6 +73,7 @@ export const useConversations = () => {
       });
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   };
 
@@ -45,13 +81,23 @@ export const useConversations = () => {
     if (!user) return null;
     
     try {
+      console.log('Creating new conversation:', title);
       const { data, error } = await conversationService.create({
         user_id: user.id,
         title,
       });
-      if (error) throw error;
       
-      await loadConversations();
+      if (error) {
+        console.error('Error creating conversation:', error);
+        throw error;
+      }
+      
+      // Update local state immediately
+      if (data) {
+        setConversations(prev => [data, ...prev]);
+        setCurrentConversationId(data.id);
+      }
+      
       return data;
     } catch (error) {
       console.error('Error creating conversation:', error);
@@ -71,15 +117,25 @@ export const useConversations = () => {
       // Generate title from the first message
       const title = await ChatService.generateTitle([{ role: 'user', content: firstMessage }]);
       
+      console.log('Creating conversation with message, title:', title);
+      
       // Create conversation with the generated title
       const { data, error } = await conversationService.create({
         user_id: user.id,
         title,
       });
-      if (error) throw error;
       
-      await loadConversations();
-      console.log('Created conversation with title:', title);
+      if (error) {
+        console.error('Error creating conversation:', error);
+        throw error;
+      }
+      
+      // Update local state immediately
+      if (data) {
+        setConversations(prev => [data, ...prev]);
+        setCurrentConversationId(data.id);
+      }
+      
       return data;
     } catch (error) {
       console.error('Error creating conversation with message:', error);
@@ -93,11 +149,24 @@ export const useConversations = () => {
   };
 
   const updateConversationTitle = async (id: string, title: string) => {
+    if (!user) return;
+    
     try {
-      const { error } = await conversationService.update(id, { title });
-      if (error) throw error;
+      console.log('Updating conversation title:', id, title);
+      const { data, error } = await conversationService.update(id, { title });
       
-      await loadConversations();
+      if (error) {
+        console.error('Error updating conversation:', error);
+        throw error;
+      }
+      
+      // Update local state immediately
+      if (data) {
+        setConversations(prev => prev.map(conv => 
+          conv.id === id ? { ...conv, title: data.title, updated_at: data.updated_at } : conv
+        ));
+      }
+      
       toast({
         title: "Success",
         description: "Conversation title updated.",
@@ -113,33 +182,26 @@ export const useConversations = () => {
   };
 
   const deleteConversation = async (id: string) => {
+    if (!user) return;
+    
     try {
       console.log('Deleting conversation:', id);
       
-      // First, delete all messages associated with this conversation
-      const { error: messagesError } = await supabase
-        .from('messages')
-        .delete()
-        .eq('conversation_id', id);
+      // Use the service method that properly handles deletion
+      const { error } = await conversationService.delete(id);
       
-      if (messagesError) {
-        console.error('Error deleting messages:', messagesError);
-        throw messagesError;
-      }
-      
-      // Then delete the conversation itself
-      const { error: conversationError } = await supabase
-        .from('conversations')
-        .delete()
-        .eq('id', id);
-      
-      if (conversationError) {
-        console.error('Error deleting conversation:', conversationError);
-        throw conversationError;
+      if (error) {
+        console.error('Error deleting conversation:', error);
+        throw error;
       }
       
       // Update local state immediately
       setConversations(prev => prev.filter(conv => conv.id !== id));
+      
+      // Clear stored conversation ID if it matches the deleted one
+      if (getCurrentConversationId() === id) {
+        setCurrentConversationId(null);
+      }
       
       toast({
         title: "Success",
@@ -155,13 +217,22 @@ export const useConversations = () => {
     }
   };
 
+  // Load conversations when user is available and not initializing
   useEffect(() => {
-    loadConversations();
-  }, [user]);
+    if (user && !initializing) {
+      loadConversations();
+    } else if (!user) {
+      // Clear conversations when user logs out
+      setConversations([]);
+    }
+  }, [user, initializing]);
 
+  // Set up real-time subscription for conversations
   useEffect(() => {
     if (!user) return;
 
+    console.log('Setting up real-time subscription for conversations');
+    
     const channel = supabase
       .channel('conversations-changes')
       .on(
@@ -172,13 +243,19 @@ export const useConversations = () => {
           table: 'conversations',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
-          loadConversations();
+        (payload) => {
+          console.log('Real-time conversation change:', payload);
+          
+          // Refresh conversations on any change
+          setTimeout(() => {
+            loadConversations();
+          }, 100);
         }
       )
       .subscribe();
 
     return () => {
+      console.log('Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
   }, [user]);
@@ -191,5 +268,7 @@ export const useConversations = () => {
     updateConversationTitle,
     deleteConversation,
     refreshConversations: loadConversations,
+    getCurrentConversationId,
+    setCurrentConversationId,
   };
 };

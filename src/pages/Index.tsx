@@ -26,14 +26,44 @@ interface Message {
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth();
-  const { createConversation, createConversationWithMessage } = useConversations();
+  const { user, loading: authLoading, initializing } = useAuth();
+  const { 
+    createConversation, 
+    createConversationWithMessage,
+    getCurrentConversationId,
+    setCurrentConversationId,
+    conversations 
+  } = useConversations();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversationHistory, setConversationHistory] = useState<ServiceChatMessage[]>([]);
   const [lastUserMessage, setLastUserMessage] = useState<string>('');
+  const [isRestoringState, setIsRestoringState] = useState(false);
+
+  // Restore conversation state when user is available
+  useEffect(() => {
+    if (user && !initializing && conversations.length > 0 && !isRestoringState) {
+      const savedConversationId = getCurrentConversationId();
+      
+      if (savedConversationId && conversations.find(conv => conv.id === savedConversationId)) {
+        console.log('Restoring conversation state:', savedConversationId);
+        setIsRestoringState(true);
+        handleChatSelect(savedConversationId).finally(() => {
+          setIsRestoringState(false);
+        });
+      } else if (!currentChatId && conversations.length > 0) {
+        // If no saved conversation, select the most recent one
+        const mostRecent = conversations[0];
+        console.log('Selecting most recent conversation:', mostRecent.id);
+        setIsRestoringState(true);
+        handleChatSelect(mostRecent.id).finally(() => {
+          setIsRestoringState(false);
+        });
+      }
+    }
+  }, [user, initializing, conversations, currentChatId]);
 
   const createNewConversation = async () => {
     if (!user) {
@@ -49,6 +79,7 @@ const Index = () => {
       const conversation = await createConversation();
       if (conversation) {
         setCurrentChatId(conversation.id);
+        setCurrentConversationId(conversation.id);
         setMessages([]);
         setConversationHistory([]);
         console.log('Created new conversation:', conversation.id);
@@ -191,6 +222,8 @@ const Index = () => {
       const conversation = await createConversationWithMessage(content);
       if (conversation) {
         setCurrentChatId(conversation.id);
+        setCurrentConversationId(conversation.id);
+        
         // Add user message to UI
         const userMessage: Message = {
           id: Date.now().toString(),
@@ -238,6 +271,7 @@ const Index = () => {
   const handleChatSelect = async (chatId: string) => {
     try {
       setCurrentChatId(chatId);
+      setCurrentConversationId(chatId);
       
       // Load messages for this conversation
       const dbMessages = await ChatService.getConversationMessages(chatId);
@@ -273,12 +307,17 @@ const Index = () => {
     }
   };
 
-  // Create initial conversation when user is available
-  useEffect(() => {
-    if (user && !currentChatId && !authLoading) {
-      createNewConversation();
-    }
-  }, [user, currentChatId, authLoading]);
+  // Show loading state during initialization
+  if (initializing) {
+    return (
+      <div className="flex h-screen bg-background text-foreground items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Show authentication message if not logged in
   if (!user && !authLoading) {
@@ -339,7 +378,7 @@ const Index = () => {
         {/* Chat Area */}
         <div className="flex-1 overflow-y-auto pb-32">
           <div className="space-y-0">
-            {messages.length === 0 && !isTyping && (
+            {messages.length === 0 && !isTyping && !isRestoringState && (
               <div className="flex items-center justify-center h-full text-center p-8">
                 <div className="space-y-4">
                   <h2 className="text-xl font-semibold">Start a conversation</h2>
@@ -349,6 +388,16 @@ const Index = () => {
                 </div>
               </div>
             )}
+            
+            {isRestoringState && (
+              <div className="flex items-center justify-center h-full text-center p-8">
+                <div className="space-y-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto"></div>
+                  <p className="text-muted-foreground">Restoring conversation...</p>
+                </div>
+              </div>
+            )}
+            
             {messages.map((message, index) => (
               <div key={message.id}>
                 <ChatMessage message={message} />
@@ -373,7 +422,7 @@ const Index = () => {
         </div>
 
         {/* Input Area */}
-        <ChatInput onSendMessage={handleSendMessage} disabled={isTyping || !user} />
+        <ChatInput onSendMessage={handleSendMessage} disabled={isTyping || !user || isRestoringState} />
       </div>
     </div>
   );
