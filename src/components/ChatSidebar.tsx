@@ -4,7 +4,7 @@ import { Plus, Settings, X, User, Crown, Bot, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useConversations } from '@/hooks/useConversations';
 import ConversationItem from './ConversationItem';
 
@@ -58,8 +58,17 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   };
 
   const handleDeleteConversation = async (id: string) => {
+    console.log('Deleting conversation:', id);
+    
+    // Check if we're deleting the currently active conversation
+    const isDeletingCurrentChat = id === currentChatId;
+    
+    // Delete the conversation
     await deleteConversation(id);
-    if (id === currentChatId) {
+    
+    // If we deleted the current conversation, start a new chat
+    if (isDeletingCurrentChat) {
+      console.log('Deleted current conversation, starting new chat');
       onNewChat();
     }
   };

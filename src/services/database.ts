@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client'
 import type { Database } from '@/integrations/supabase/types'
 
@@ -82,15 +81,28 @@ export const conversationService = {
     }
   },
 
-  // Delete a conversation
+  // Delete a conversation and all its messages
   delete: async (id: string): Promise<{ error: DatabaseError | null }> => {
-    const { error } = await supabase
+    // First delete all messages associated with this conversation
+    const { error: messagesError } = await supabase
+      .from('messages')
+      .delete()
+      .eq('conversation_id', id)
+
+    if (messagesError) {
+      return {
+        error: { message: messagesError.message, code: messagesError.code, details: messagesError.details }
+      }
+    }
+
+    // Then delete the conversation
+    const { error: conversationError } = await supabase
       .from('conversations')
       .delete()
       .eq('id', id)
 
     return {
-      error: error ? { message: error.message, code: error.code, details: error.details } : null
+      error: conversationError ? { message: conversationError.message, code: conversationError.code, details: conversationError.details } : null
     }
   }
 }

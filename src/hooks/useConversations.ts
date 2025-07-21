@@ -1,10 +1,10 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { conversationService } from '@/services/database';
+import { conversationService, messageService } from '@/services/database';
 import { ChatService } from '@/services/chatService';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface Conversation {
   id: string;
@@ -114,13 +114,36 @@ export const useConversations = () => {
 
   const deleteConversation = async (id: string) => {
     try {
-      const { error } = await conversationService.update(id, { is_deleted: true });
-      if (error) throw error;
+      console.log('Deleting conversation:', id);
       
-      await loadConversations();
+      // First, delete all messages associated with this conversation
+      const { error: messagesError } = await supabase
+        .from('messages')
+        .delete()
+        .eq('conversation_id', id);
+      
+      if (messagesError) {
+        console.error('Error deleting messages:', messagesError);
+        throw messagesError;
+      }
+      
+      // Then delete the conversation itself
+      const { error: conversationError } = await supabase
+        .from('conversations')
+        .delete()
+        .eq('id', id);
+      
+      if (conversationError) {
+        console.error('Error deleting conversation:', conversationError);
+        throw conversationError;
+      }
+      
+      // Update local state immediately
+      setConversations(prev => prev.filter(conv => conv.id !== id));
+      
       toast({
         title: "Success",
-        description: "Conversation deleted.",
+        description: "Conversation deleted successfully.",
       });
     } catch (error) {
       console.error('Error deleting conversation:', error);

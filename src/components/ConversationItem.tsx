@@ -1,8 +1,18 @@
-
 import React, { useState } from 'react';
 import { MessageSquare, Edit3, Trash2, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface ConversationItemProps {
   id: string;
@@ -25,6 +35,7 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(title);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const handleEdit = () => {
     if (editTitle.trim() && editTitle !== title) {
@@ -36,6 +47,11 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   const handleCancel = () => {
     setEditTitle(title);
     setIsEditing(false);
+  };
+
+  const handleDeleteConfirm = () => {
+    onDelete(id);
+    setIsDeleteDialogOpen(false);
   };
 
   const formatTime = (dateString: string) => {
@@ -125,17 +141,40 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
             >
               <Edit3 className="h-3 w-3" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(id);
-              }}
-              className="h-6 w-6 p-0 text-gray-400 hover:text-red-400"
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
+            
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                  className="h-6 w-6 p-0 text-gray-400 hover:text-red-400"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-gray-800 text-white border-gray-700">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Conversation</AlertDialogTitle>
+                  <AlertDialogDescription className="text-gray-300">
+                    Are you sure you want to delete "{title}"? This action cannot be undone and will permanently remove the conversation and all its messages.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="bg-gray-700 text-white hover:bg-gray-600 border-gray-600">
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteConfirm}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </>
       )}
