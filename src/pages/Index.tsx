@@ -441,7 +441,7 @@ const Index = () => {
             )}
             
             {messages.map((message, index) => (
-              <div key={message.id}>
+              <div key={message.id} className="group">
                 <ChatMessage 
                   message={message} 
                   ref={index === messages.length - 1 ? lastMessageRef : null}
