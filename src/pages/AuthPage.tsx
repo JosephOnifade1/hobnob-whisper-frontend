@@ -29,7 +29,7 @@ type SignUpFormData = z.infer<typeof signUpSchema>;
 const AuthPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, signIn, signUp, loading } = useAuth();
+  const { user, signIn, signUp, loading, initializing } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,6 +40,7 @@ const AuthPage = () => {
       email: '',
       password: '',
     },
+    mode: 'onChange',
   });
 
   const signUpForm = useForm<SignUpFormData>({
@@ -49,17 +50,18 @@ const AuthPage = () => {
       password: '',
       fullName: '',
     },
+    mode: 'onChange',
   });
 
   const currentForm = isSignUp ? signUpForm : signInForm;
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (user && !loading) {
+    if (user && !loading && !initializing) {
       console.log('User authenticated, redirecting to home');
-      navigate('/');
+      navigate('/', { replace: true });
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, initializing, navigate]);
 
   const onSignIn = async (data: SignInFormData) => {
     console.log('Attempting sign in with:', data.email);
@@ -166,9 +168,20 @@ const AuthPage = () => {
     setIsSignUp(!isSignUp);
     signInForm.reset();
     signUpForm.reset();
+    setShowPassword(false);
   };
 
-  if (loading) {
+  // Show loading while initializing
+  if (initializing) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  // If user is already authenticated, don't render the auth form
+  if (user) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -205,6 +218,7 @@ const AuthPage = () => {
                           placeholder="Enter your full name" 
                           {...field} 
                           disabled={isSubmitting}
+                          autoComplete="name"
                         />
                       </FormControl>
                       <FormMessage />
@@ -225,6 +239,7 @@ const AuthPage = () => {
                         placeholder="Enter your email" 
                         {...field} 
                         disabled={isSubmitting}
+                        autoComplete="email"
                       />
                     </FormControl>
                     <FormMessage />
@@ -245,6 +260,7 @@ const AuthPage = () => {
                           placeholder="Enter your password" 
                           {...field} 
                           disabled={isSubmitting}
+                          autoComplete={isSignUp ? "new-password" : "current-password"}
                         />
                         <Button
                           type="button"
@@ -253,6 +269,7 @@ const AuthPage = () => {
                           className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                           onClick={() => setShowPassword(!showPassword)}
                           disabled={isSubmitting}
+                          tabIndex={-1}
                         >
                           {showPassword ? (
                             <EyeOff className="h-4 w-4" />
