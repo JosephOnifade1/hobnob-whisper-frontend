@@ -4,14 +4,12 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useGuestChat } from '@/contexts/GuestChatContext';
-import { GuestChatService } from '@/services/guestChatService';
-import { AIService, AIProvider } from '@/services/aiService';
+import { AIService } from '@/services/aiService';
 import ChatMessage from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
 import TypingIndicator from '@/components/TypingIndicator';
 import ThemeToggle from '@/components/ThemeToggle';
-import ModelSelector from '@/components/ModelSelector';
-import { Crown, Upload, MessageSquare, Users, Star, UserPlus } from 'lucide-react';
+import { Crown, Upload, MessageSquare, Users, Star, UserPlus, Zap } from 'lucide-react';
 
 const GuestMode = () => {
   const navigate = useNavigate();
@@ -19,7 +17,6 @@ const GuestMode = () => {
   const { messages, addMessage, isTyping, setIsTyping } = useGuestChat();
   const [isSending, setIsSending] = useState(false);
   const [lastUserMessage, setLastUserMessage] = useState('');
-  const [selectedProvider, setSelectedProvider] = useState<AIProvider>(AIService.getDefaultProvider());
   
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
@@ -41,15 +38,6 @@ const GuestMode = () => {
     return () => clearTimeout(timer);
   }, [messages, isTyping, scrollToBottom]);
 
-  const handleProviderChange = (provider: AIProvider) => {
-    setSelectedProvider(provider);
-    AIService.setDefaultProvider(provider);
-    toast({
-      title: "AI Model Changed",
-      description: `Switched to ${provider === 'openai' ? 'OpenAI GPT-4.1' : 'DeepSeek V3'}`,
-    });
-  };
-
   const sendMessageToAI = async (content: string, isRetry: boolean = false) => {
     if (isSending) return;
 
@@ -57,17 +45,6 @@ const GuestMode = () => {
     setIsTyping(true);
 
     try {
-      // Check rate limit
-      const remainingMessages = GuestChatService.getRemainingMessages();
-      if (remainingMessages <= 0) {
-        toast({
-          title: "Daily Limit Reached",
-          description: "You've reached your daily message limit. Sign up for unlimited access!",
-          variant: "destructive",
-        });
-        return;
-      }
-
       // Prepare conversation history
       const chatMessages = [
         ...messages.map(msg => ({
@@ -77,11 +54,11 @@ const GuestMode = () => {
         { role: 'user' as const, content }
       ];
 
-      console.log('Sending guest message to AI with provider:', selectedProvider);
+      console.log('Sending guest message to AI with DeepSeek provider');
 
       const response = await AIService.sendMessage(chatMessages, {
         isGuest: true,
-        provider: selectedProvider,
+        provider: 'deepseek', // Always use DeepSeek for guest mode
       });
 
       // Add AI response
@@ -94,16 +71,7 @@ const GuestMode = () => {
       if (isRetry) {
         toast({
           title: "Success!",
-          description: `Message sent successfully using ${response.provider === 'openai' ? 'OpenAI' : 'DeepSeek'}.`,
-        });
-      }
-
-      // Show remaining messages warning
-      const remaining = GuestChatService.getRemainingMessages();
-      if (remaining <= 3 && remaining > 0) {
-        toast({
-          title: "Limited Messages Remaining",
-          description: `You have ${remaining} messages left today. Sign up for unlimited access!`,
+          description: "Message sent successfully using DeepSeek V3.",
         });
       }
 
@@ -114,10 +82,7 @@ const GuestMode = () => {
       let canRetry = true;
       
       if (error instanceof Error) {
-        if (error.message.includes('Daily message limit')) {
-          errorMessage = error.message;
-          canRetry = false;
-        } else if (error.message.includes('rate limit') || error.message.includes('429')) {
+        if (error.message.includes('rate limit') || error.message.includes('429')) {
           errorMessage = "I'm receiving too many requests right now. Please wait a moment and try again.";
         } else {
           errorMessage = `I encountered an error: ${error.message}. Please try again.`;
@@ -170,8 +135,6 @@ const GuestMode = () => {
     }
   };
 
-  const remainingMessages = GuestChatService.getRemainingMessages();
-
   return (
     <div className="flex h-screen bg-background text-foreground">
       {/* Main Content */}
@@ -184,17 +147,11 @@ const GuestMode = () => {
                 Hobnob AI - Guest Mode
               </h1>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MessageSquare className="h-4 w-4" />
-                <span>{remainingMessages} messages left today</span>
+                <Zap className="h-4 w-4 text-orange-500" />
+                <span>Powered by DeepSeek V3</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <ModelSelector
-                selectedProvider={selectedProvider}
-                onProviderChange={handleProviderChange}
-                disabled={isTyping || isSending}
-                compact
-              />
               <Button
                 onClick={() => navigate('/auth')}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
@@ -217,7 +174,7 @@ const GuestMode = () => {
                   Unlock the full experience!
                 </p>
                 <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                  Sign up for unlimited messages, file uploads, and conversation history
+                  Sign up for unlimited messages, multiple AI models, file uploads, and conversation history
                 </p>
               </div>
             </div>
@@ -239,19 +196,20 @@ const GuestMode = () => {
                 <div className="space-y-6 max-w-md">
                   <h2 className="text-xl font-semibold">Welcome to Hobnob AI</h2>
                   <p className="text-muted-foreground">
-                    Try our AI assistant for free! You have {remainingMessages} messages to get started.
+                    Try our AI assistant for free! Powered by DeepSeek V3 for fast and efficient responses.
                   </p>
                   
-                  <ModelSelector
-                    selectedProvider={selectedProvider}
-                    onProviderChange={handleProviderChange}
-                    disabled={isTyping || isSending}
-                  />
+                  <div className="flex items-center justify-center gap-2 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                    <Zap className="h-5 w-5 text-orange-500" />
+                    <span className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                      DeepSeek V3 - Unlimited messages in guest mode
+                    </span>
+                  </div>
                   
                   <div className="grid grid-cols-1 gap-3 text-sm">
                     <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                       <Star className="h-4 w-4" />
-                      <span>Multiple AI models available</span>
+                      <span>Fast AI responses with DeepSeek V3</span>
                     </div>
                     <div className="flex items-center gap-2 text-gray-500">
                       <Upload className="h-4 w-4" />
@@ -298,7 +256,7 @@ const GuestMode = () => {
         {/* Input Area */}
         <ChatInput 
           onSendMessage={handleSendMessage} 
-          disabled={isTyping || isSending || remainingMessages <= 0}
+          disabled={isTyping || isSending}
         />
       </div>
     </div>

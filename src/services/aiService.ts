@@ -44,15 +44,16 @@ export class AIService {
     messages: AIMessage[],
     options: AIServiceOptions = {}
   ): Promise<AIResponse> {
-    const provider = options.provider || this.getDefaultProvider();
+    // For guest users, always use DeepSeek
+    const provider = options.isGuest ? 'deepseek' : (options.provider || this.getDefaultProvider());
     
     try {
       console.log(`Sending message via ${provider} provider`);
       
       let response;
       if (options.isGuest) {
-        // For guest users, use the guest chat service with provider selection
-        response = await this.sendGuestMessage(messages, provider);
+        // For guest users, use the guest chat service with DeepSeek
+        response = await GuestChatService.sendMessage(messages);
       } else if (provider === 'deepseek') {
         response = await DeepSeekService.sendMessage(messages, options);
       } else {
@@ -66,7 +67,7 @@ export class AIService {
     } catch (error) {
       console.error(`Error with ${provider} provider:`, error);
       
-      // Try fallback provider if the primary one fails
+      // Try fallback provider if the primary one fails (only for authenticated users)
       if (!options.isGuest) {
         const fallbackProvider: AIProvider = provider === 'openai' ? 'deepseek' : 'openai';
         console.log(`Attempting fallback to ${fallbackProvider}`);
@@ -90,45 +91,6 @@ export class AIService {
       
       throw error;
     }
-  }
-
-  private static async sendGuestMessage(
-    messages: AIMessage[],
-    provider: AIProvider
-  ): Promise<{ message: string; usage?: any }> {
-    // Check rate limit for guest users
-    const { allowed } = GuestChatService.checkRateLimit();
-    if (!allowed) {
-      throw new Error('Daily message limit reached. Please sign up for unlimited access.');
-    }
-
-    const response = await fetch('https://mkyvnegyagdfehukmklu.supabase.co/functions/v1/chat-completion', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1reXZuZWd5YWdkZmVodWtta2x1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4ODIxNzcsImV4cCI6MjA2ODQ1ODE3N30.y3tm0N8Kq11mS2aFFk24pn9P7wN6iVLYMhHTvNXfw30',
-      },
-      body: JSON.stringify({
-        messages,
-        provider,
-        isGuest: true,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    // Increment usage after successful request
-    GuestChatService.incrementUsage();
-    
-    return {
-      message: data.message || data.response || '',
-      usage: data.usage,
-    };
   }
 
   static getAvailableProviders(): { value: AIProvider; label: string; description: string }[] {
