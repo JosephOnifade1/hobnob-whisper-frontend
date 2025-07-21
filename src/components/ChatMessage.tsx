@@ -29,6 +29,104 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, r
     });
   };
 
+  // Function to format message content with proper markdown-like rendering
+  const formatMessageContent = (content: string) => {
+    // Split content by code blocks (```...```)
+    const parts = content.split(/(```[\s\S]*?```)/g);
+    
+    return parts.map((part, index) => {
+      // Check if this part is a code block
+      if (part.startsWith('```') && part.endsWith('```')) {
+        // Extract language and code
+        const lines = part.slice(3, -3).split('\n');
+        const language = lines[0].trim();
+        const code = lines.slice(1).join('\n').trim();
+        
+        return (
+          <div key={index} className="my-4">
+            {language && (
+              <div className="bg-muted/50 px-3 py-1 text-xs text-muted-foreground border border-border rounded-t-md font-mono">
+                {language}
+              </div>
+            )}
+            <pre className={`bg-muted/30 p-4 rounded-md overflow-x-auto border border-border ${language ? 'rounded-t-none' : ''}`}>
+              <code className="text-sm font-mono text-foreground">{code}</code>
+            </pre>
+          </div>
+        );
+      }
+      
+      // Handle inline code (text between single backticks)
+      const inlineCodeRegex = /`([^`]+)`/g;
+      if (inlineCodeRegex.test(part)) {
+        const formattedPart = part.split(inlineCodeRegex).map((segment, segIndex) => {
+          if (segIndex % 2 === 1) {
+            // This is inline code
+            return (
+              <code key={segIndex} className="bg-muted/50 px-1.5 py-0.5 rounded text-sm font-mono border">
+                {segment}
+              </code>
+            );
+          }
+          return formatTextWithStructure(segment);
+        });
+        return <span key={index}>{formattedPart}</span>;
+      }
+      
+      return <span key={index}>{formatTextWithStructure(part)}</span>;
+    });
+  };
+
+  // Function to handle other text formatting (bold, lists, etc.)
+  const formatTextWithStructure = (text: string) => {
+    // Handle bold text (**text**)
+    const boldRegex = /\*\*(.*?)\*\*/g;
+    const parts = text.split(boldRegex);
+    
+    return parts.map((part, index) => {
+      if (index % 2 === 1) {
+        return <strong key={index} className="font-semibold">{part}</strong>;
+      }
+      
+      // Handle bullet points and numbered lists
+      const lines = part.split('\n');
+      const formattedLines = lines.map((line, lineIndex) => {
+        // Handle bullet points (- or *)
+        if (line.trim().match(/^[-*]\s+/)) {
+          const content = line.replace(/^[-*]\s+/, '').trim();
+          return (
+            <div key={lineIndex} className="flex items-start gap-2 my-1">
+              <span className="text-muted-foreground mt-1.5 w-2 h-2 bg-current rounded-full flex-shrink-0"></span>
+              <span>{content}</span>
+            </div>
+          );
+        }
+        
+        // Handle numbered lists (1. 2. etc.)
+        if (line.trim().match(/^\d+\.\s+/)) {
+          const match = line.match(/^(\d+)\.\s+(.+)/);
+          if (match) {
+            return (
+              <div key={lineIndex} className="flex items-start gap-2 my-1">
+                <span className="text-muted-foreground font-medium min-w-6">{match[1]}.</span>
+                <span>{match[2]}</span>
+              </div>
+            );
+          }
+        }
+        
+        // Regular line
+        if (line.trim()) {
+          return <div key={lineIndex} className="my-1">{line}</div>;
+        }
+        
+        return <br key={lineIndex} />;
+      });
+      
+      return <span key={index}>{formattedLines}</span>;
+    });
+  };
+
   return (
     <div 
       ref={ref}
@@ -53,14 +151,14 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, r
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Message content */}
-          <div className="prose prose-sm max-w-none dark:prose-invert light:prose-gray">
-            <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-              {message.content}
+          <div className="prose prose-sm max-w-none dark:prose-invert">
+            <div className="text-sm leading-relaxed text-foreground">
+              {formatMessageContent(message.content)}
             </div>
           </div>
 
           {/* Timestamp and actions */}
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex items-center gap-2 mt-3">
             <span className="timestamp-hover text-xs text-muted-foreground">
               {formatTime(message.timestamp)}
             </span>
