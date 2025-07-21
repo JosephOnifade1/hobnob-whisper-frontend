@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Menu, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,7 @@ const Index = () => {
     setCurrentConversationId,
     conversations 
   } = useConversations();
+  
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
@@ -41,10 +42,34 @@ const Index = () => {
   const [conversationHistory, setConversationHistory] = useState<ServiceChatMessage[]>([]);
   const [lastUserMessage, setLastUserMessage] = useState<string>('');
   const [isRestoringState, setIsRestoringState] = useState(false);
-
-  // Restore conversation state when user is available
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  
+  // Refs for auto-scrolling
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const lastMessageRef = useRef<HTMLDivElement>(null);
+  
+  // Auto-scroll to bottom when new messages are added
+  const scrollToBottom = useCallback(() => {
+    if (lastMessageRef.current) {
+      lastMessageRef.current.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'end'
+      });
+    }
+  }, []);
+  
+  // Scroll to bottom when messages change or typing starts
   useEffect(() => {
-    if (user && !initializing && conversations.length > 0 && !isRestoringState) {
+    const timer = setTimeout(() => {
+      scrollToBottom();
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [messages, isTyping, scrollToBottom]);
+
+  // Restore conversation state when user is available - prevent multiple calls
+  useEffect(() => {
+    if (user && !initializing && conversations.length > 0 && !isRestoringState && !currentChatId) {
       const savedConversationId = getCurrentConversationId();
       
       if (savedConversationId && conversations.find(conv => conv.id === savedConversationId)) {
@@ -53,7 +78,7 @@ const Index = () => {
         handleChatSelect(savedConversationId).finally(() => {
           setIsRestoringState(false);
         });
-      } else if (!currentChatId && conversations.length > 0) {
+      } else if (conversations.length > 0) {
         // If no saved conversation, select the most recent one
         const mostRecent = conversations[0];
         console.log('Selecting most recent conversation:', mostRecent.id);
@@ -63,7 +88,7 @@ const Index = () => {
         });
       }
     }
-  }, [user, initializing, conversations, currentChatId]);
+  }, [user, initializing, conversations, currentChatId, isRestoringState]);
 
   const createNewConversation = async () => {
     if (!user) {
@@ -95,20 +120,25 @@ const Index = () => {
   };
 
   const sendMessageToAI = async (content: string, isRetry: boolean = false) => {
-    if (!user || !currentChatId) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to send messages.",
-        variant: "destructive",
-      });
+    if (!user || !currentChatId || isSendingMessage) {
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to send messages.",
+          variant: "destructive",
+        });
+      }
       return;
     }
 
+    setIsSendingMessage(true);
     setIsTyping(true);
 
     try {
-      // Save user message to database
-      await ChatService.saveMessage(currentChatId, 'user', content);
+      // Save user message to database only if not a retry
+      if (!isRetry) {
+        await ChatService.saveMessage(currentChatId, 'user', content);
+      }
 
       // Prepare conversation history for OpenAI
       const chatMessages: ServiceChatMessage[] = [
@@ -128,7 +158,7 @@ const Index = () => {
       await ChatService.saveMessage(currentChatId, 'assistant', response.message);
 
       // Update conversation title if it's the first exchange
-      if (conversationHistory.length === 0) {
+      if (conversationHistory.length === 0 && !isRetry) {
         const title = await ChatService.generateTitle([{ role: 'user', content }]);
         await ChatService.updateConversationTitle(currentChatId, title);
         console.log('Updated conversation title to:', title);
@@ -136,7 +166,7 @@ const Index = () => {
 
       // Add AI response to UI
       const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: `ai-${Date.now()}`,
         content: response.message,
         role: 'assistant',
         timestamp: new Date(),
@@ -144,17 +174,24 @@ const Index = () => {
       
       setMessages(prev => {
         if (isRetry) {
+          // Remove the last error message and add the new response
           return [...prev.slice(0, -1), aiMessage];
         }
         return [...prev, aiMessage];
       });
       
       // Update conversation history
-      setConversationHistory(prev => [
-        ...prev,
-        { role: 'user', content },
-        { role: 'assistant', content: response.message }
-      ]);
+      setConversationHistory(prev => {
+        if (isRetry) {
+          // For retries, just update with the new AI response
+          return [...prev, { role: 'assistant', content: response.message }];
+        }
+        return [
+          ...prev,
+          { role: 'user', content },
+          { role: 'assistant', content: response.message }
+        ];
+      });
 
       console.log('OpenAI response received successfully:', { 
         length: response.message.length, 
@@ -191,7 +228,7 @@ const Index = () => {
       }
       
       const errorMessage_obj: Message = {
-        id: (Date.now() + 2).toString(),
+        id: `error-${Date.now()}`,
         content: errorMessage,
         role: 'assistant',
         timestamp: new Date(),
@@ -213,10 +250,13 @@ const Index = () => {
       });
     } finally {
       setIsTyping(false);
+      setIsSendingMessage(false);
     }
   };
 
   const handleSendMessage = async (content: string, attachments?: any[]) => {
+    if (isSendingMessage) return; // Prevent duplicate sends
+    
     // Create new conversation with the first message if none exists
     if (!currentChatId) {
       const conversation = await createConversationWithMessage(content);
@@ -226,7 +266,7 @@ const Index = () => {
         
         // Add user message to UI
         const userMessage: Message = {
-          id: Date.now().toString(),
+          id: `user-${Date.now()}`,
           content,
           role: 'user',
           timestamp: new Date(),
@@ -244,7 +284,7 @@ const Index = () => {
 
     // Add user message to UI
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: `user-${Date.now()}`,
       content,
       role: 'user',
       timestamp: new Date(),
@@ -258,7 +298,7 @@ const Index = () => {
   };
 
   const handleRetryMessage = async () => {
-    if (lastUserMessage) {
+    if (lastUserMessage && !isSendingMessage) {
       await sendMessageToAI(lastUserMessage, true);
     }
   };
@@ -269,6 +309,8 @@ const Index = () => {
   };
 
   const handleChatSelect = async (chatId: string) => {
+    if (chatId === currentChatId) return; // Prevent reloading the same chat
+    
     try {
       setCurrentChatId(chatId);
       setCurrentConversationId(chatId);
@@ -376,7 +418,7 @@ const Index = () => {
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto pb-32">
+        <div ref={chatContainerRef} className="flex-1 overflow-y-auto pb-32">
           <div className="space-y-0">
             {messages.length === 0 && !isTyping && !isRestoringState && (
               <div className="flex items-center justify-center h-full text-center p-8">
@@ -400,7 +442,10 @@ const Index = () => {
             
             {messages.map((message, index) => (
               <div key={message.id}>
-                <ChatMessage message={message} />
+                <ChatMessage 
+                  message={message} 
+                  ref={index === messages.length - 1 ? lastMessageRef : null}
+                />
                 {message.isError && message.canRetry && index === messages.length - 1 && (
                   <div className="flex justify-center py-4">
                     <Button
@@ -408,7 +453,7 @@ const Index = () => {
                       variant="outline"
                       size="sm"
                       className="gap-2"
-                      disabled={isTyping}
+                      disabled={isTyping || isSendingMessage}
                     >
                       <RefreshCw className="h-4 w-4" />
                       Try Again
@@ -417,12 +462,19 @@ const Index = () => {
                 )}
               </div>
             ))}
-            {isTyping && <TypingIndicator />}
+            {isTyping && (
+              <div ref={lastMessageRef}>
+                <TypingIndicator />
+              </div>
+            )}
           </div>
         </div>
 
         {/* Input Area */}
-        <ChatInput onSendMessage={handleSendMessage} disabled={isTyping || !user || isRestoringState} />
+        <ChatInput 
+          onSendMessage={handleSendMessage} 
+          disabled={isTyping || !user || isRestoringState || isSendingMessage} 
+        />
       </div>
     </div>
   );

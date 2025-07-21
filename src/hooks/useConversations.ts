@@ -22,6 +22,7 @@ export const useConversations = () => {
   const { user, initializing } = useAuth();
   const { toast } = useToast();
   const loadingRef = useRef(false);
+  const subscriptionRef = useRef<any>(null);
 
   // Store current conversation ID in localStorage for persistence
   const getCurrentConversationId = () => {
@@ -227,14 +228,28 @@ export const useConversations = () => {
     }
   }, [user, initializing]);
 
-  // Set up real-time subscription for conversations
+  // Set up real-time subscription for conversations - prevent duplicates
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      // Clean up existing subscription when user logs out
+      if (subscriptionRef.current) {
+        console.log('Cleaning up real-time subscription');
+        supabase.removeChannel(subscriptionRef.current);
+        subscriptionRef.current = null;
+      }
+      return;
+    }
+
+    // Clean up existing subscription before creating a new one
+    if (subscriptionRef.current) {
+      console.log('Cleaning up existing real-time subscription');
+      supabase.removeChannel(subscriptionRef.current);
+    }
 
     console.log('Setting up real-time subscription for conversations');
     
     const channel = supabase
-      .channel('conversations-changes')
+      .channel(`conversations-changes-${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -246,19 +261,26 @@ export const useConversations = () => {
         (payload) => {
           console.log('Real-time conversation change:', payload);
           
-          // Refresh conversations on any change
+          // Debounce the refresh to prevent multiple rapid updates
           setTimeout(() => {
-            loadConversations();
-          }, 100);
+            if (!loadingRef.current) {
+              loadConversations();
+            }
+          }, 500);
         }
       )
       .subscribe();
 
+    subscriptionRef.current = channel;
+
     return () => {
-      console.log('Cleaning up real-time subscription');
-      supabase.removeChannel(channel);
+      if (subscriptionRef.current) {
+        console.log('Cleaning up real-time subscription');
+        supabase.removeChannel(subscriptionRef.current);
+        subscriptionRef.current = null;
+      }
     };
-  }, [user]);
+  }, [user?.id]); // Only depend on user.id to prevent frequent re-subscriptions
 
   return {
     conversations,

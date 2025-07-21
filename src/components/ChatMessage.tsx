@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { Bot, User, Copy, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -14,7 +14,7 @@ interface ChatMessageProps {
   message: Message;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
+const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, ref) => {
   const isAssistant = message.role === 'assistant';
 
   const copyToClipboard = () => {
@@ -30,7 +30,10 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   };
 
   return (
-    <div className={`message-group flex w-full py-6 px-4 ${isAssistant ? 'bg-muted/30' : 'bg-background'}`}>
+    <div 
+      ref={ref}
+      className={`message-group flex w-full py-6 px-4 ${isAssistant ? 'bg-muted/30' : 'bg-background'}`}
+    >
       <div className="max-w-4xl mx-auto w-full flex gap-4">
         {/* Avatar */}
         <div className={`
@@ -94,6 +97,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
       </div>
     </div>
   );
-};
+});
+
+ChatMessage.displayName = 'ChatMessage';
 
 export default ChatMessage;
