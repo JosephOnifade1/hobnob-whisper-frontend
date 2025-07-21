@@ -53,8 +53,6 @@ const AuthPage = () => {
     mode: 'onChange',
   });
 
-  const currentForm = isSignUp ? signUpForm : signInForm;
-
   // Redirect if already authenticated
   useEffect(() => {
     if (user && !loading && !initializing) {
@@ -110,7 +108,7 @@ const AuthPage = () => {
   };
 
   const onSignUp = async (data: SignUpFormData) => {
-    console.log('Attempting sign up with:', data.email);
+    console.log('Attempting sign up with:', data.email, data.fullName);
     setIsSubmitting(true);
     
     try {
@@ -127,6 +125,8 @@ const AuthPage = () => {
         
         if (errorMessage.includes('User already registered')) {
           errorMessage = 'An account with this email already exists. Please sign in instead.';
+        } else if (errorMessage.includes('Password should be at least 6 characters')) {
+          errorMessage = 'Password must be at least 6 characters long.';
         }
 
         toast({
@@ -143,6 +143,7 @@ const AuthPage = () => {
         // Switch to sign in mode after successful signup
         setIsSignUp(false);
         signInForm.reset();
+        signUpForm.reset();
       }
     } catch (error) {
       console.error('Sign up error:', error);
@@ -156,19 +157,12 @@ const AuthPage = () => {
     }
   };
 
-  const onSubmit = async (data: any) => {
-    if (isSignUp) {
-      await onSignUp(data as SignUpFormData);
-    } else {
-      await onSignIn(data as SignInFormData);
-    }
-  };
-
   const toggleAuthMode = () => {
     setIsSignUp(!isSignUp);
     signInForm.reset();
     signUpForm.reset();
     setShowPassword(false);
+    setIsSubmitting(false); // Reset submitting state when switching modes
   };
 
   // Show loading while initializing
@@ -204,9 +198,9 @@ const AuthPage = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...currentForm}>
-            <form onSubmit={currentForm.handleSubmit(onSubmit)} className="space-y-4">
-              {isSignUp && (
+          {isSignUp ? (
+            <Form {...signUpForm}>
+              <form onSubmit={signUpForm.handleSubmit(onSignUp)} className="space-y-4">
                 <FormField
                   control={signUpForm.control}
                   name="fullName"
@@ -225,81 +219,157 @@ const AuthPage = () => {
                     </FormItem>
                   )}
                 />
-              )}
-              
-              <FormField
-                control={currentForm.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="email" 
-                        placeholder="Enter your email" 
-                        {...field} 
-                        disabled={isSubmitting}
-                        autoComplete="email"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={currentForm.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <div className="relative">
+                
+                <FormField
+                  control={signUpForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
                         <Input 
-                          type={showPassword ? "text" : "password"} 
-                          placeholder="Enter your password" 
+                          type="email" 
+                          placeholder="Enter your email" 
                           {...field} 
                           disabled={isSubmitting}
-                          autoComplete={isSignUp ? "new-password" : "current-password"}
+                          autoComplete="email"
                         />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                          onClick={() => setShowPassword(!showPassword)}
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={signUpForm.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input 
+                            type={showPassword ? "text" : "password"} 
+                            placeholder="Enter your password" 
+                            {...field} 
+                            disabled={isSubmitting}
+                            autoComplete="new-password"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowPassword(!showPassword)}
+                            disabled={isSubmitting}
+                            tabIndex={-1}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating Account...
+                    </>
+                  ) : (
+                    'Create Account'
+                  )}
+                </Button>
+              </form>
+            </Form>
+          ) : (
+            <Form {...signInForm}>
+              <form onSubmit={signInForm.handleSubmit(onSignIn)} className="space-y-4">
+                <FormField
+                  control={signInForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="email" 
+                          placeholder="Enter your email" 
+                          {...field} 
                           disabled={isSubmitting}
-                          tabIndex={-1}
-                        >
-                          {showPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isSignUp ? 'Creating Account...' : 'Signing In...'}
-                  </>
-                ) : (
-                  isSignUp ? 'Create Account' : 'Sign In'
-                )}
-              </Button>
-            </form>
-          </Form>
+                          autoComplete="email"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={signInForm.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input 
+                            type={showPassword ? "text" : "password"} 
+                            placeholder="Enter your password" 
+                            {...field} 
+                            disabled={isSubmitting}
+                            autoComplete="current-password"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowPassword(!showPassword)}
+                            disabled={isSubmitting}
+                            tabIndex={-1}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Signing In...
+                    </>
+                  ) : (
+                    'Sign In'
+                  )}
+                </Button>
+              </form>
+            </Form>
+          )}
           
           <div className="mt-4 text-center text-sm">
             <span className="text-muted-foreground">

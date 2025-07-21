@@ -24,16 +24,21 @@ export interface SignInData {
 export const auth = {
   // Sign up new user
   signUp: async ({ email, password, fullName, username }: SignUpData): Promise<AuthResponse> => {
+    console.log('Supabase signUp called with:', { email, fullName });
+    
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
+        emailRedirectTo: `${window.location.origin}/`,
         data: {
           full_name: fullName,
           username: username,
         }
       }
     })
+    
+    console.log('Supabase signUp response:', { data, error });
     
     return {
       user: data.user,
@@ -44,10 +49,14 @@ export const auth = {
 
   // Sign in existing user
   signIn: async ({ email, password }: SignInData): Promise<AuthResponse> => {
+    console.log('Supabase signIn called with:', { email });
+    
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
     })
+    
+    console.log('Supabase signIn response:', { data, error });
     
     return {
       user: data.user,
@@ -58,7 +67,9 @@ export const auth = {
 
   // Sign out current user
   signOut: async (): Promise<{ error: AuthError | null }> => {
+    console.log('Supabase signOut called');
     const { error } = await supabase.auth.signOut()
+    console.log('Supabase signOut response:', { error });
     return { error }
   },
 
