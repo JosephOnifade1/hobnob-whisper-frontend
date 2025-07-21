@@ -71,7 +71,7 @@ const GuestMode = () => {
       if (isRetry) {
         toast({
           title: "Success!",
-          description: "Message sent successfully using DeepSeek V3.",
+          description: "Message sent successfully using DeepSeek Reasoner.",
         });
       }
 
@@ -148,7 +148,7 @@ const GuestMode = () => {
               </h1>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Zap className="h-4 w-4 text-orange-500" />
-                <span>Powered by DeepSeek V3</span>
+                <span>Powered by DeepSeek Reasoner</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -196,20 +196,20 @@ const GuestMode = () => {
                 <div className="space-y-6 max-w-md">
                   <h2 className="text-xl font-semibold">Welcome to Hobnob AI</h2>
                   <p className="text-muted-foreground">
-                    Try our AI assistant for free! Powered by DeepSeek V3 for fast and efficient responses.
+                    Try our AI assistant for free! Powered by DeepSeek Reasoner for fast and intelligent responses.
                   </p>
                   
                   <div className="flex items-center justify-center gap-2 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
                     <Zap className="h-5 w-5 text-orange-500" />
                     <span className="text-sm font-medium text-orange-800 dark:text-orange-200">
-                      DeepSeek V3 - Unlimited messages in guest mode
+                      DeepSeek Reasoner - Unlimited messages in guest mode
                     </span>
                   </div>
                   
                   <div className="grid grid-cols-1 gap-3 text-sm">
                     <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                       <Star className="h-4 w-4" />
-                      <span>Fast AI responses with DeepSeek V3</span>
+                      <span>Fast AI responses with DeepSeek Reasoner</span>
                     </div>
                     <div className="flex items-center gap-2 text-gray-500">
                       <Upload className="h-4 w-4" />

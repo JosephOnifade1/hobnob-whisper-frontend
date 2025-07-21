@@ -80,9 +80,9 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'deepseek-chat',
+          model: 'deepseek-reasoner',
           messages: messages,
-          max_tokens: 1000,
+          max_tokens: 2000,
           temperature: 0.7,
         }),
       });
@@ -106,7 +106,13 @@ serve(async (req) => {
     if (!aiResponse.ok) {
       const errorData = await aiResponse.json().catch(() => ({}));
       console.error(`${provider} API error:`, errorData);
-      throw new Error(errorData.error?.message || `${provider} API error: ${aiResponse.status}`);
+      
+      // More specific error handling for DeepSeek
+      if (provider === 'deepseek' && aiResponse.status === 401) {
+        throw new Error('DeepSeek API key is invalid or expired. Please check your API key configuration.');
+      }
+      
+      throw new Error(errorData.error?.message || `${provider} API error: ${aiResponse.status} - ${aiResponse.statusText}`);
     }
 
     const data = await aiResponse.json();
