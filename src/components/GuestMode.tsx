@@ -5,10 +5,12 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useGuestChat } from '@/contexts/GuestChatContext';
 import { GuestChatService } from '@/services/guestChatService';
+import { AIService, AIProvider } from '@/services/aiService';
 import ChatMessage from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
 import TypingIndicator from '@/components/TypingIndicator';
 import ThemeToggle from '@/components/ThemeToggle';
+import ModelSelector from '@/components/ModelSelector';
 import { Crown, Upload, MessageSquare, Users, Star, UserPlus } from 'lucide-react';
 
 const GuestMode = () => {
@@ -17,6 +19,7 @@ const GuestMode = () => {
   const { messages, addMessage, isTyping, setIsTyping } = useGuestChat();
   const [isSending, setIsSending] = useState(false);
   const [lastUserMessage, setLastUserMessage] = useState('');
+  const [selectedProvider, setSelectedProvider] = useState<AIProvider>(AIService.getDefaultProvider());
   
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
@@ -37,6 +40,15 @@ const GuestMode = () => {
     
     return () => clearTimeout(timer);
   }, [messages, isTyping, scrollToBottom]);
+
+  const handleProviderChange = (provider: AIProvider) => {
+    setSelectedProvider(provider);
+    AIService.setDefaultProvider(provider);
+    toast({
+      title: "AI Model Changed",
+      description: `Switched to ${provider === 'openai' ? 'OpenAI GPT-4.1' : 'DeepSeek V3'}`,
+    });
+  };
 
   const sendMessageToAI = async (content: string, isRetry: boolean = false) => {
     if (isSending) return;
@@ -65,20 +77,24 @@ const GuestMode = () => {
         { role: 'user' as const, content }
       ];
 
-      console.log('Sending guest message to AI');
+      console.log('Sending guest message to AI with provider:', selectedProvider);
 
-      const response = await GuestChatService.sendMessage(chatMessages);
+      const response = await AIService.sendMessage(chatMessages, {
+        isGuest: true,
+        provider: selectedProvider,
+      });
 
       // Add AI response
       addMessage({
         content: response.message,
         role: 'assistant',
+        provider: response.provider,
       });
 
       if (isRetry) {
         toast({
           title: "Success!",
-          description: "Message sent successfully after retry.",
+          description: `Message sent successfully using ${response.provider === 'openai' ? 'OpenAI' : 'DeepSeek'}.`,
         });
       }
 
@@ -173,6 +189,12 @@ const GuestMode = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <ModelSelector
+                selectedProvider={selectedProvider}
+                onProviderChange={handleProviderChange}
+                disabled={isTyping || isSending}
+                compact
+              />
               <Button
                 onClick={() => navigate('/auth')}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
@@ -220,10 +242,16 @@ const GuestMode = () => {
                     Try our AI assistant for free! You have {remainingMessages} messages to get started.
                   </p>
                   
+                  <ModelSelector
+                    selectedProvider={selectedProvider}
+                    onProviderChange={handleProviderChange}
+                    disabled={isTyping || isSending}
+                  />
+                  
                   <div className="grid grid-cols-1 gap-3 text-sm">
                     <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                       <Star className="h-4 w-4" />
-                      <span>Powered by GPT-4.1</span>
+                      <span>Multiple AI models available</span>
                     </div>
                     <div className="flex items-center gap-2 text-gray-500">
                       <Upload className="h-4 w-4" />

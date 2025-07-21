@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { AIProvider } from '@/services/aiService';
 
 interface GuestMessage {
   id: string;
@@ -8,6 +9,7 @@ interface GuestMessage {
   timestamp: Date;
   isError?: boolean;
   canRetry?: boolean;
+  provider?: AIProvider;
 }
 
 interface GuestChatContextType {

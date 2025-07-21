@@ -11,7 +11,9 @@ import ChatInput from '@/components/ChatInput';
 import TypingIndicator from '@/components/TypingIndicator';
 import ThemeToggle from '@/components/ThemeToggle';
 import GuestMode from '@/components/GuestMode';
+import ModelSelector from '@/components/ModelSelector';
 import { ChatService, type ChatMessage as ServiceChatMessage } from '@/services/chatService';
+import { AIService, AIProvider } from '@/services/aiService';
 
 interface Message {
   id: string;
@@ -21,6 +23,7 @@ interface Message {
   attachments?: any[];
   isError?: boolean;
   canRetry?: boolean;
+  provider?: AIProvider;
 }
 
 const Index = () => {
@@ -44,6 +47,7 @@ const Index = () => {
   const [isRestoringState, setIsRestoringState] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [showGuestMode, setShowGuestMode] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<AIProvider>(AIService.getDefaultProvider());
   
   // Refs for auto-scrolling
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -67,6 +71,16 @@ const Index = () => {
     
     return () => clearTimeout(timer);
   }, [messages, isTyping, scrollToBottom]);
+
+  // Handle provider change
+  const handleProviderChange = (provider: AIProvider) => {
+    setSelectedProvider(provider);
+    AIService.setDefaultProvider(provider);
+    toast({
+      title: "AI Model Changed",
+      description: `Switched to ${provider === 'openai' ? 'OpenAI GPT-4.1' : 'DeepSeek V3'}`,
+    });
+  };
 
   // Restore conversation state when user is available - prevent multiple calls
   useEffect(() => {
@@ -141,18 +155,24 @@ const Index = () => {
         await ChatService.saveMessage(currentChatId, 'user', content);
       }
 
-      // Prepare conversation history for OpenAI
+      // Prepare conversation history for AI
       const chatMessages: ServiceChatMessage[] = [
         ...conversationHistory,
         { role: 'user', content }
       ];
 
-      console.log('Sending to OpenAI via Edge Function:', { messageCount: chatMessages.length, currentChatId, isRetry });
+      console.log('Sending to AI via unified service:', { 
+        messageCount: chatMessages.length, 
+        currentChatId, 
+        isRetry,
+        provider: selectedProvider 
+      });
 
-      // Call OpenAI through our Edge Function
-      const response = await ChatService.sendMessage(chatMessages, {
+      // Call AI through our unified service
+      const response = await AIService.sendMessage(chatMessages, {
         conversationId: currentChatId,
         userId: user.id,
+        provider: selectedProvider,
       });
 
       // Save AI response to database
@@ -171,6 +191,7 @@ const Index = () => {
         content: response.message,
         role: 'assistant',
         timestamp: new Date(),
+        provider: response.provider,
       };
       
       setMessages(prev => {
@@ -194,15 +215,16 @@ const Index = () => {
         ];
       });
 
-      console.log('OpenAI response received successfully:', { 
+      console.log('AI response received successfully:', { 
         length: response.message.length, 
-        usage: response.usage 
+        usage: response.usage,
+        provider: response.provider 
       });
 
       if (isRetry) {
         toast({
           title: "Success!",
-          description: "Message sent successfully after retry.",
+          description: `Message sent successfully using ${response.provider === 'openai' ? 'OpenAI' : 'DeepSeek'}.`,
         });
       }
 
@@ -216,7 +238,7 @@ const Index = () => {
         if (error.message.includes('rate limit') || error.message.includes('429')) {
           errorMessage = "I'm receiving too many requests right now. Please wait a moment and try again.";
         } else if (error.message.includes('quota exceeded') || error.message.includes('402')) {
-          errorMessage = "The AI service quota has been exceeded. Please check your OpenAI billing or try again later.";
+          errorMessage = "The AI service quota has been exceeded. Please check your API billing or try again later.";
           canRetry = false;
         } else if (error.message.includes('authentication') || error.message.includes('401')) {
           errorMessage = "There's an authentication issue with the AI service. Please contact support.";
@@ -376,7 +398,7 @@ const Index = () => {
             Welcome to Hobnob AI
           </h1>
           <p className="text-muted-foreground text-lg">
-            Your intelligent AI assistant powered by GPT-4.1
+            Your intelligent AI assistant powered by multiple AI models.
           </p>
           
           <div className="space-y-4">
@@ -451,7 +473,15 @@ const Index = () => {
                 </Button>
               </div>
             </div>
-            <ThemeToggle />
+            <div className="flex items-center gap-4">
+              <ModelSelector
+                selectedProvider={selectedProvider}
+                onProviderChange={handleProviderChange}
+                disabled={isTyping || isSendingMessage}
+                compact
+              />
+              <ThemeToggle />
+            </div>
           </div>
         </div>
 
@@ -463,8 +493,13 @@ const Index = () => {
                 <div className="space-y-4">
                   <h2 className="text-xl font-semibold">Start a conversation</h2>
                   <p className="text-muted-foreground">
-                    Ask me anything! I'm powered by OpenAI's latest GPT-4.1 model.
+                    Ask me anything! Choose between OpenAI GPT-4.1 or DeepSeek V3 models.
                   </p>
+                  <ModelSelector
+                    selectedProvider={selectedProvider}
+                    onProviderChange={handleProviderChange}
+                    disabled={isTyping || isSendingMessage}
+                  />
                 </div>
               </div>
             )}

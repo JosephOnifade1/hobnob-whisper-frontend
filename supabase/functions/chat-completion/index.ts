@@ -14,22 +14,30 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, conversationId, userId, isGuest = false } = await req.json();
+    const { messages, conversationId, userId, isGuest = false, provider = 'openai' } = await req.json();
     
     console.log('Chat completion request:', { 
       messageCount: messages?.length, 
       conversationId, 
       userId,
-      isGuest 
+      isGuest,
+      provider 
     });
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       throw new Error('Messages array is required and cannot be empty');
     }
 
+    // Get API keys
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
+    const deepSeekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
+
+    // Validate API key based on provider
+    if (provider === 'openai' && !openAIApiKey) {
       throw new Error('OpenAI API key not configured');
+    }
+    if (provider === 'deepseek' && !deepSeekApiKey) {
+      throw new Error('DeepSeek API key not configured');
     }
 
     // For guest users, we don't need Supabase authentication
@@ -58,40 +66,62 @@ serve(async (req) => {
       }
     }
 
-    // Call OpenAI API
-    console.log('Calling OpenAI API...');
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: messages,
-        max_tokens: 1000,
-        temperature: 0.7,
-      }),
-    });
+    // Call appropriate AI API based on provider
+    console.log(`Calling ${provider} API...`);
+    let aiResponse;
+    let aiMessage;
 
-    if (!openAIResponse.ok) {
-      const errorData = await openAIResponse.json().catch(() => ({}));
-      console.error('OpenAI API error:', errorData);
-      throw new Error(errorData.error?.message || `OpenAI API error: ${openAIResponse.status}`);
+    if (provider === 'deepseek') {
+      // Call DeepSeek API
+      aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${deepSeekApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: messages,
+          max_tokens: 1000,
+          temperature: 0.7,
+        }),
+      });
+    } else {
+      // Call OpenAI API (default)
+      aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: messages,
+          max_tokens: 1000,
+          temperature: 0.7,
+        }),
+      });
     }
 
-    const data = await openAIResponse.json();
-    const aiMessage = data.choices[0]?.message?.content;
+    if (!aiResponse.ok) {
+      const errorData = await aiResponse.json().catch(() => ({}));
+      console.error(`${provider} API error:`, errorData);
+      throw new Error(errorData.error?.message || `${provider} API error: ${aiResponse.status}`);
+    }
+
+    const data = await aiResponse.json();
+    aiMessage = data.choices[0]?.message?.content;
 
     if (!aiMessage) {
-      throw new Error('No response generated from OpenAI');
+      throw new Error(`No response generated from ${provider}`);
     }
 
-    console.log('OpenAI response received successfully');
+    console.log(`${provider} response received successfully`);
 
     return new Response(JSON.stringify({
       message: aiMessage,
       usage: data.usage,
+      provider: provider,
       isGuest,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
