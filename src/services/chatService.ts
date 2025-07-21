@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface ChatMessage {
@@ -128,17 +127,53 @@ export class ChatService {
 
   static async generateTitle(messages: ChatMessage[]): Promise<string> {
     try {
-      // Take the first user message and generate a title
+      // Take the first user message and generate a meaningful title
       const firstUserMessage = messages.find(m => m.role === 'user')?.content || '';
       
       if (!firstUserMessage) return 'New Conversation';
       
-      // Simple title generation - take first 50 characters
-      const title = firstUserMessage.slice(0, 50);
-      return title.length === 50 ? title + '...' : title;
+      // Create a more intelligent title from the first message
+      let title = firstUserMessage.trim();
+      
+      // If it's a question, keep it concise
+      if (title.length > 60) {
+        title = title.substring(0, 60).trim();
+        // Try to cut at a word boundary
+        const lastSpace = title.lastIndexOf(' ');
+        if (lastSpace > 30) {
+          title = title.substring(0, lastSpace);
+        }
+        title += '...';
+      }
+      
+      // Capitalize first letter
+      title = title.charAt(0).toUpperCase() + title.slice(1);
+      
+      return title;
     } catch (error) {
       console.error('Error generating title:', error);
       return 'New Conversation';
+    }
+  }
+
+  static async updateConversationTitle(conversationId: string, title: string) {
+    try {
+      const { data, error } = await supabase
+        .from('conversations')
+        .update({ title, updated_at: new Date().toISOString() })
+        .eq('id', conversationId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating conversation title:', error);
+        throw new Error(`Failed to update conversation title: ${error.message}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in updateConversationTitle:', error);
+      throw error;
     }
   }
 }

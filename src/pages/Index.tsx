@@ -27,7 +27,7 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
-  const { createConversation } = useConversations();
+  const { createConversation, createConversationWithMessage } = useConversations();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
@@ -96,11 +96,11 @@ const Index = () => {
       // Save AI response to database
       await ChatService.saveMessage(currentChatId, 'assistant', response.message);
 
-      // Update conversation title if it's the first message
+      // Update conversation title if it's the first exchange
       if (conversationHistory.length === 0) {
         const title = await ChatService.generateTitle([{ role: 'user', content }]);
-        // Update title in database through useConversations hook
-        // This will be handled by the real-time subscription
+        await ChatService.updateConversationTitle(currentChatId, title);
+        console.log('Updated conversation title to:', title);
       }
 
       // Add AI response to UI
@@ -186,13 +186,26 @@ const Index = () => {
   };
 
   const handleSendMessage = async (content: string, attachments?: any[]) => {
-    // Create new conversation if none exists
+    // Create new conversation with the first message if none exists
     if (!currentChatId) {
-      await createNewConversation();
-      // Wait for the conversation to be created
-      setTimeout(() => {
-        handleSendMessage(content, attachments);
-      }, 100);
+      const conversation = await createConversationWithMessage(content);
+      if (conversation) {
+        setCurrentChatId(conversation.id);
+        // Add user message to UI
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          content,
+          role: 'user',
+          timestamp: new Date(),
+          attachments,
+        };
+        
+        setMessages([userMessage]);
+        setLastUserMessage(content);
+        
+        // Send to AI after conversation is created
+        await sendMessageToAI(content);
+      }
       return;
     }
 

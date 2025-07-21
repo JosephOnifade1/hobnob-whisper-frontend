@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { conversationService } from '@/services/database';
+import { ChatService } from '@/services/chatService';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -54,6 +55,34 @@ export const useConversations = () => {
       return data;
     } catch (error) {
       console.error('Error creating conversation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create conversation.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
+  const createConversationWithMessage = async (firstMessage: string) => {
+    if (!user) return null;
+    
+    try {
+      // Generate title from the first message
+      const title = await ChatService.generateTitle([{ role: 'user', content: firstMessage }]);
+      
+      // Create conversation with the generated title
+      const { data, error } = await conversationService.create({
+        user_id: user.id,
+        title,
+      });
+      if (error) throw error;
+      
+      await loadConversations();
+      console.log('Created conversation with title:', title);
+      return data;
+    } catch (error) {
+      console.error('Error creating conversation with message:', error);
       toast({
         title: "Error",
         description: "Failed to create conversation.",
@@ -135,6 +164,7 @@ export const useConversations = () => {
     conversations,
     loading,
     createConversation,
+    createConversationWithMessage,
     updateConversationTitle,
     deleteConversation,
     refreshConversations: loadConversations,
