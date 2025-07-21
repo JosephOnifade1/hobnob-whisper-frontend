@@ -1,15 +1,12 @@
-import React, { useState } from 'react';
-import { MessageSquare, Plus, Settings, Menu, X, Trash2, Edit3, User, Crown, Bot, LogOut } from 'lucide-react';
+
+import React from 'react';
+import { Plus, Settings, X, User, Crown, Bot, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
-
-interface ChatSession {
-  id: string;
-  title: string;
-  timestamp: Date;
-}
+import { useConversations } from '@/hooks/useConversations';
+import ConversationItem from './ConversationItem';
 
 interface ChatSidebarProps {
   isOpen: boolean;
@@ -29,14 +26,14 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { toast } = useToast();
-  const [chatSessions] = useState<ChatSession[]>([
-    { id: '1', title: 'Getting started with AI', timestamp: new Date() },
-    { id: '2', title: 'Creative writing tips', timestamp: new Date(Date.now() - 86400000) },
-    { id: '3', title: 'Code optimization help', timestamp: new Date(Date.now() - 172800000) },
-  ]);
+  const { 
+    conversations, 
+    loading, 
+    updateConversationTitle, 
+    deleteConversation 
+  } = useConversations();
 
   const navigationItems = [
-    { icon: MessageSquare, label: 'Chat', path: '/' },
     { icon: Bot, label: 'AI Agent', path: '/ai-agent' },
   ];
 
@@ -57,6 +54,13 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         description: "There was an error logging you out. Please try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleDeleteConversation = async (id: string) => {
+    await deleteConversation(id);
+    if (id === currentChatId) {
+      onNewChat();
     }
   };
 
@@ -132,33 +136,30 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
         {/* Chat History */}
         <div className="flex-1 overflow-y-auto p-2">
-          <div className="space-y-1">
-            {chatSessions.map((session) => (
-              <div
-                key={session.id}
-                onClick={() => onChatSelect(session.id)}
-                className={`
-                  group flex items-center px-3 py-2 rounded-lg cursor-pointer
-                  transition-colors duration-200
-                  ${currentChatId === session.id 
-                    ? 'bg-gray-700 text-white' 
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                  }
-                `}
-              >
-                <MessageSquare className="h-4 w-4 mr-3 flex-shrink-0" />
-                <span className="flex-1 truncate text-sm">{session.title}</span>
-                <div className="opacity-0 group-hover:opacity-100 flex space-x-1">
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-gray-400 hover:text-white">
-                    <Edit3 className="h-3 w-3" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-gray-400 hover:text-red-400">
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+          {loading ? (
+            <div className="text-center text-gray-500 py-4">
+              Loading conversations...
+            </div>
+          ) : conversations.length === 0 ? (
+            <div className="text-center text-gray-500 py-4">
+              No conversations yet
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {conversations.map((conversation) => (
+                <ConversationItem
+                  key={conversation.id}
+                  id={conversation.id}
+                  title={conversation.title}
+                  lastMessageAt={conversation.last_message_at}
+                  isActive={currentChatId === conversation.id}
+                  onSelect={onChatSelect}
+                  onEdit={updateConversationTitle}
+                  onDelete={handleDeleteConversation}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Footer */}

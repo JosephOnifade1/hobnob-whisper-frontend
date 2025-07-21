@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useConversations } from '@/hooks/useConversations';
 import ChatSidebar from '@/components/ChatSidebar';
 import ChatMessage from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
@@ -26,19 +27,13 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
+  const { createConversation } = useConversations();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversationHistory, setConversationHistory] = useState<ServiceChatMessage[]>([]);
   const [lastUserMessage, setLastUserMessage] = useState<string>('');
-
-  // Create initial conversation when user is available
-  useEffect(() => {
-    if (user && !currentChatId && !authLoading) {
-      createNewConversation();
-    }
-  }, [user, currentChatId, authLoading]);
 
   const createNewConversation = async () => {
     if (!user) {
@@ -51,11 +46,13 @@ const Index = () => {
     }
 
     try {
-      const conversation = await ChatService.createConversation(user.id);
-      setCurrentChatId(conversation.id);
-      setMessages([]);
-      setConversationHistory([]);
-      console.log('Created new conversation:', conversation.id);
+      const conversation = await createConversation();
+      if (conversation) {
+        setCurrentChatId(conversation.id);
+        setMessages([]);
+        setConversationHistory([]);
+        console.log('Created new conversation:', conversation.id);
+      }
     } catch (error) {
       console.error('Error creating conversation:', error);
       toast({
@@ -79,6 +76,9 @@ const Index = () => {
     setIsTyping(true);
 
     try {
+      // Save user message to database
+      await ChatService.saveMessage(currentChatId, 'user', content);
+
       // Prepare conversation history for OpenAI
       const chatMessages: ServiceChatMessage[] = [
         ...conversationHistory,
@@ -93,6 +93,16 @@ const Index = () => {
         userId: user.id,
       });
 
+      // Save AI response to database
+      await ChatService.saveMessage(currentChatId, 'assistant', response.message);
+
+      // Update conversation title if it's the first message
+      if (conversationHistory.length === 0) {
+        const title = await ChatService.generateTitle([{ role: 'user', content }]);
+        // Update title in database through useConversations hook
+        // This will be handled by the real-time subscription
+      }
+
       // Add AI response to UI
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -102,7 +112,6 @@ const Index = () => {
       };
       
       setMessages(prev => {
-        // If this is a retry, remove the last error message
         if (isRetry) {
           return [...prev.slice(0, -1), aiMessage];
         }
@@ -121,7 +130,6 @@ const Index = () => {
         usage: response.usage 
       });
 
-      // Show success feedback for retries
       if (isRetry) {
         toast({
           title: "Success!",
@@ -132,7 +140,6 @@ const Index = () => {
     } catch (error) {
       console.error('Error sending message:', error);
       
-      // Determine error message and retry capability
       let errorMessage = "I apologize, but I encountered an error. Please try again.";
       let canRetry = true;
       
@@ -152,7 +159,6 @@ const Index = () => {
         }
       }
       
-      // Add error message to UI
       const errorMessage_obj: Message = {
         id: (Date.now() + 2).toString(),
         content: errorMessage,
@@ -163,7 +169,6 @@ const Index = () => {
       };
       
       setMessages(prev => {
-        // If this is a retry, replace the last error message
         if (isRetry) {
           return [...prev.slice(0, -1), errorMessage_obj];
         }
@@ -181,6 +186,16 @@ const Index = () => {
   };
 
   const handleSendMessage = async (content: string, attachments?: any[]) => {
+    // Create new conversation if none exists
+    if (!currentChatId) {
+      await createNewConversation();
+      // Wait for the conversation to be created
+      setTimeout(() => {
+        handleSendMessage(content, attachments);
+      }, 100);
+      return;
+    }
+
     // Add user message to UI
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -244,6 +259,13 @@ const Index = () => {
       });
     }
   };
+
+  // Create initial conversation when user is available
+  useEffect(() => {
+    if (user && !currentChatId && !authLoading) {
+      createNewConversation();
+    }
+  }, [user, currentChatId, authLoading]);
 
   // Show authentication message if not logged in
   if (!user && !authLoading) {

@@ -101,4 +101,44 @@ export class ChatService {
       throw error;
     }
   }
+
+  static async saveMessage(conversationId: string, role: 'user' | 'assistant', content: string) {
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          role,
+          content,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error saving message:', error);
+        throw new Error(`Failed to save message: ${error.message}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in saveMessage:', error);
+      throw error;
+    }
+  }
+
+  static async generateTitle(messages: ChatMessage[]): Promise<string> {
+    try {
+      // Take the first user message and generate a title
+      const firstUserMessage = messages.find(m => m.role === 'user')?.content || '';
+      
+      if (!firstUserMessage) return 'New Conversation';
+      
+      // Simple title generation - take first 50 characters
+      const title = firstUserMessage.slice(0, 50);
+      return title.length === 50 ? title + '...' : title;
+    } catch (error) {
+      console.error('Error generating title:', error);
+      return 'New Conversation';
+    }
+  }
 }
