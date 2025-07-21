@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Menu, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +10,7 @@ import ChatMessage from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
 import TypingIndicator from '@/components/TypingIndicator';
 import ThemeToggle from '@/components/ThemeToggle';
+import GuestMode from '@/components/GuestMode';
 import { ChatService, type ChatMessage as ServiceChatMessage } from '@/services/chatService';
 
 interface Message {
@@ -43,6 +43,7 @@ const Index = () => {
   const [lastUserMessage, setLastUserMessage] = useState<string>('');
   const [isRestoringState, setIsRestoringState] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [showGuestMode, setShowGuestMode] = useState(false);
   
   // Refs for auto-scrolling
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -361,14 +362,51 @@ const Index = () => {
     );
   }
 
-  // Show authentication message if not logged in
+  // Show guest mode if user chooses to continue as guest
+  if (showGuestMode && !user) {
+    return <GuestMode />;
+  }
+
+  // Show authentication options if not logged in
   if (!user && !authLoading) {
     return (
       <div className="flex h-screen bg-background text-foreground items-center justify-center">
-        <div className="text-center space-y-4">
-          <h1 className="text-2xl font-bold">Welcome to Hobnob AI</h1>
-          <p className="text-muted-foreground">Please sign in to start chatting with AI.</p>
-          <Button onClick={() => navigate('/auth')}>Sign In</Button>
+        <div className="text-center space-y-6 max-w-md p-8">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            Welcome to Hobnob AI
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Your intelligent AI assistant powered by GPT-4.1
+          </p>
+          
+          <div className="space-y-4">
+            <Button 
+              onClick={() => navigate('/auth')} 
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3"
+              size="lg"
+            >
+              Sign In / Sign Up
+            </Button>
+            
+            <div className="flex items-center gap-4">
+              <div className="flex-1 border-t border-border"></div>
+              <span className="text-sm text-muted-foreground">or</span>
+              <div className="flex-1 border-t border-border"></div>
+            </div>
+            
+            <Button 
+              onClick={() => setShowGuestMode(true)}
+              variant="outline" 
+              className="w-full py-3"
+              size="lg"
+            >
+              Continue as Guest
+            </Button>
+            
+            <p className="text-xs text-muted-foreground">
+              Guest mode: Limited to 10 messages per day. No file uploads or conversation history.
+            </p>
+          </div>
         </div>
       </div>
     );
