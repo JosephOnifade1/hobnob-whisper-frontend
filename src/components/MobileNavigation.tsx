@@ -24,8 +24,8 @@ const MobileNavigation: React.FC = () => {
   const location = useLocation();
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-t border-border/50 safe-area-pb">
-      <div className="flex items-center justify-around px-2 py-2">
+    <div className="fixed bottom-0 left-0 right-0 z-20 bg-background/95 backdrop-blur-xl border-t border-border/50 safe-area-pb animate-slide-in-bottom">
+      <div className="flex items-center justify-around px-2 py-3">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
@@ -36,10 +36,10 @@ const MobileNavigation: React.FC = () => {
               onClick={() => navigate(item.path)}
               haptic
               className={cn(
-                "flex flex-col items-center gap-1 px-3 py-2 h-auto min-h-[60px] rounded-xl transition-colors",
+                "flex flex-col items-center gap-1 px-3 py-2 h-auto min-h-[60px] rounded-xl transition-all duration-200",
                 isActive 
-                  ? "text-primary bg-primary/10" 
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  ? "text-primary bg-primary/10 scale-105" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50 hover:scale-105"
               )}
             >
               <item.icon className="h-5 w-5" />

@@ -1,10 +1,10 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Paperclip, Mic, Camera, Upload, Image, Video, FileText, MicOff, X, Globe, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { useDeviceType } from '@/hooks/useDeviceType';
 
 interface ChatInputProps {
   onSendMessage: (message: string, attachments?: any[]) => void;
@@ -24,7 +24,10 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
   const [isRecording, setIsRecording] = useState(false);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [inputHeight, setInputHeight] = useState(80);
+  const { isMobile } = useDeviceType();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
@@ -34,6 +37,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
       onSendMessage(message.trim(), attachments);
       setMessage('');
       setAttachments([]);
+      setShowAttachmentMenu(false);
     }
   };
 
@@ -44,13 +48,25 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
     }
   };
 
-  // Auto-resize textarea
+  // Auto-resize textarea and update container height
   useEffect(() => {
-    if (textareaRef.current) {
+    if (textareaRef.current && containerRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+      const scrollHeight = Math.min(textareaRef.current.scrollHeight, 120);
+      textareaRef.current.style.height = `${scrollHeight}px`;
+      
+      // Calculate total container height including attachments
+      const baseHeight = 80; // Base padding and button height
+      const textHeight = scrollHeight;
+      const attachmentHeight = attachments.length > 0 ? 80 : 0;
+      const totalHeight = baseHeight + Math.max(textHeight - 24, 0) + attachmentHeight;
+      
+      setInputHeight(totalHeight);
+      
+      // Update CSS custom property for dynamic padding
+      document.documentElement.style.setProperty('--chat-input-height', `${totalHeight}px`);
     }
-  }, [message]);
+  }, [message, attachments.length]);
 
   const addAttachment = (file: File, type: Attachment['type']) => {
     const id = Date.now().toString();
@@ -159,10 +175,17 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 p-4 lg:p-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Enhanced background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/95 to-transparent pointer-events-none" />
+    <div 
+      ref={containerRef}
+      className="fixed bottom-0 left-0 right-0 z-30"
+      style={{
+        paddingBottom: `calc(${isMobile ? '80px' : '0px'} + env(safe-area-inset-bottom))`,
+      }}
+    >
+      <div className="container-responsive">
+        {/* Enhanced background with better coverage */}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/98 to-background/80 pointer-events-none" />
+        <div className="absolute inset-0 backdrop-blur-xl pointer-events-none" />
         
         {/* Attachments Preview */}
         {attachments.length > 0 && (
@@ -216,7 +239,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
           <div className={`glass-card transition-all duration-300 ${
             isFocused ? 'shadow-xl border-primary/30' : ''
           } ${isRecording ? 'border-red-400/50 shadow-red-400/20' : ''}`}>
-            <div className="p-4 lg:p-6 flex items-end gap-4">
+            <div className={`${isMobile ? 'p-4' : 'p-4 lg:p-6'} flex items-end gap-4`}>
               {/* Attachment Menu */}
               <div className="relative">
                 <Button
@@ -224,7 +247,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-                  className="text-muted-foreground hover:text-foreground p-3 rounded-xl hover:bg-accent/50 transition-all duration-200"
+                  className="text-muted-foreground hover:text-foreground p-3 rounded-xl hover:bg-accent/50 transition-all duration-200 touch-target"
                 >
                   <Paperclip className="h-5 w-5" />
                 </Button>
@@ -238,7 +261,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
                           variant="ghost"
                           size="sm"
                           onClick={() => handleFileSelect('image')}
-                          className="w-full justify-start text-foreground hover:bg-accent/50 rounded-lg py-3 px-4 transition-all duration-200"
+                          className="w-full justify-start text-foreground hover:bg-accent/50 rounded-lg py-3 px-4 transition-all duration-200 touch-target"
                         >
                           <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center mr-3">
                             <Image className="h-4 w-4 text-white" />
@@ -253,7 +276,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
                           variant="ghost"
                           size="sm"
                           onClick={() => handleFileSelect('video')}
-                          className="w-full justify-start text-foreground hover:bg-accent/50 rounded-lg py-3 px-4 transition-all duration-200"
+                          className="w-full justify-start text-foreground hover:bg-accent/50 rounded-lg py-3 px-4 transition-all duration-200 touch-target"
                         >
                           <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-pink-500 rounded-lg flex items-center justify-center mr-3">
                             <Video className="h-4 w-4 text-white" />
@@ -268,7 +291,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
                           variant="ghost"
                           size="sm"
                           onClick={() => handleFileSelect('file')}
-                          className="w-full justify-start text-foreground hover:bg-accent/50 rounded-lg py-3 px-4 transition-all duration-200"
+                          className="w-full justify-start text-foreground hover:bg-accent/50 rounded-lg py-3 px-4 transition-all duration-200 touch-target"
                         >
                           <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center mr-3">
                             <FileText className="h-4 w-4 text-white" />
@@ -283,7 +306,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
                           variant="ghost"
                           size="sm"
                           onClick={captureCamera}
-                          className="w-full justify-start text-foreground hover:bg-accent/50 rounded-lg py-3 px-4 transition-all duration-200"
+                          className="w-full justify-start text-foreground hover:bg-accent/50 rounded-lg py-3 px-4 transition-all duration-200 touch-target"
                         >
                           <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-violet-500 rounded-lg flex items-center justify-center mr-3">
                             <Camera className="h-4 w-4 text-white" />
@@ -312,6 +335,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
                   disabled={disabled}
                   className="border-0 bg-transparent resize-none focus:ring-0 focus:outline-none min-h-[24px] max-h-32 text-foreground placeholder-muted-foreground/70 text-base leading-relaxed p-0"
                   rows={1}
+                  style={{ fontSize: isMobile ? '16px' : '14px' }}
                 />
                 {message.trim() && (
                   <div className="absolute top-0 right-0 text-xs text-muted-foreground/50 mt-1">
@@ -327,7 +351,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="text-muted-foreground hover:text-foreground p-3 rounded-xl hover:bg-accent/50 transition-all duration-200"
+                  className="text-muted-foreground hover:text-foreground p-3 rounded-xl hover:bg-accent/50 transition-all duration-200 touch-target"
                 >
                   <Globe className="h-5 w-5" />
                 </Button>
@@ -338,7 +362,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
                   variant="ghost"
                   size="sm"
                   onClick={isRecording ? stopRecording : startRecording}
-                  className={`p-3 rounded-xl transition-all duration-200 ${
+                  className={`p-3 rounded-xl transition-all duration-200 touch-target ${
                     isRecording 
                       ? 'text-red-400 bg-red-400/10 animate-pulse shadow-red-400/20 shadow-lg' 
                       : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
@@ -351,7 +375,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
                 <Button
                   type="submit"
                   disabled={(!message.trim() && attachments.length === 0) || disabled}
-                  className={`btn-primary p-3 rounded-xl transition-all duration-200 ${
+                  className={`btn-primary p-3 rounded-xl transition-all duration-200 touch-target ${
                     (message.trim() || attachments.length > 0) && !disabled
                       ? 'opacity-100 hover:scale-105'
                       : 'opacity-50 cursor-not-allowed'

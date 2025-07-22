@@ -52,24 +52,96 @@ const Index = () => {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [showGuestMode, setShowGuestMode] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<AIProvider>(AIService.getDefaultProvider());
+  const [userScrolledUp, setUserScrolledUp] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
+  const scrollObserverRef = useRef<IntersectionObserver | null>(null);
 
-  const scrollToBottom = useCallback(() => {
-    if (lastMessageRef.current) {
-      lastMessageRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'end'
-      });
+  const scrollToBottom = useCallback((force = false) => {
+    if (!force && userScrolledUp) return;
+    
+    if (lastMessageRef.current && chatContainerRef.current) {
+      // Calculate the proper scroll position accounting for fixed elements
+      const container = chatContainerRef.current;
+      const lastMessage = lastMessageRef.current;
+      
+      // Get the container's current scroll info
+      const containerRect = container.getBoundingClientRect();
+      const messageRect = lastMessage.getBoundingClientRect();
+      
+      // Calculate if we need to scroll
+      const isMessageVisible = messageRect.bottom <= containerRect.bottom - 40; // 40px buffer
+      
+      if (!isMessageVisible || force) {
+        setTimeout(() => {
+          lastMessage.scrollIntoView({
+            behavior: 'smooth',
+            block: 'end',
+            inline: 'nearest'
+          });
+        }, 50);
+      }
     }
+  }, [userScrolledUp]);
+
+  // Set up scroll position monitoring
+  useEffect(() => {
+    const container = chatContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+      
+      // Consider user has scrolled up if they're more than 100px from bottom
+      setUserScrolledUp(distanceFromBottom > 100);
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Set up intersection observer for auto-scroll detection
+  useEffect(() => {
+    if (!lastMessageRef.current || !chatContainerRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (!entry.isIntersecting && !userScrolledUp) {
+          setUserScrolledUp(true);
+        }
+      },
+      {
+        root: chatContainerRef.current,
+        rootMargin: '0px 0px -100px 0px', // 100px margin from bottom
+        threshold: 0.1
+      }
+    );
+
+    observer.observe(lastMessageRef.current);
+    scrollObserverRef.current = observer;
+
+    return () => {
+      if (scrollObserverRef.current) {
+        scrollObserverRef.current.disconnect();
+      }
+    };
+  }, [messages.length, userScrolledUp]);
+
+  // Auto-scroll when messages change or typing status changes
   useEffect(() => {
     const timer = setTimeout(() => {
       scrollToBottom();
     }, 100);
     return () => clearTimeout(timer);
   }, [messages, isTyping, scrollToBottom]);
+
+  // Force scroll to bottom when user sends a message
+  const forceScrollToBottom = useCallback(() => {
+    setUserScrolledUp(false);
+    scrollToBottom(true);
+  }, [scrollToBottom]);
 
   const handleProviderChange = (provider: AIProvider) => {
     setSelectedProvider(provider);
@@ -256,6 +328,10 @@ const Index = () => {
 
   const handleSendMessage = async (content: string, attachments?: any[]) => {
     if (isSendingMessage) return;
+    
+    // Force scroll to bottom when user sends a message
+    forceScrollToBottom();
+    
     if (!currentChatId) {
       const conversation = await createConversationWithMessage(content);
       if (conversation) {
@@ -434,7 +510,8 @@ const Index = () => {
         onNewChat={handleNewChat} 
       />
 
-      <div className={`flex-1 flex flex-col ${isMobile ? 'pb-20' : ''}`}>
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
         <div className="glass-card border-b border-border/50 backdrop-blur-xl">
           <div className={`p-4 ${isMobile ? 'px-4 py-3' : 'lg:p-6'}`}>
             <div className="flex items-center justify-between">
@@ -484,8 +561,15 @@ const Index = () => {
           </div>
         </div>
 
-        <div ref={chatContainerRef} className="flex-1 overflow-y-auto">
-          <div className="space-y-0">
+        {/* Chat Messages Container */}
+        <div 
+          ref={chatContainerRef} 
+          className="flex-1 overflow-y-auto scroll-smooth-mobile"
+          style={{
+            paddingBottom: `calc(${isMobile ? '140px' : '120px'} + env(safe-area-inset-bottom))`,
+          }}
+        >
+          <div className="space-y-0 min-h-full">
             {messages.length === 0 && !isTyping && !isRestoringState && (
               <div className="flex items-center justify-center h-full text-center p-8">
                 <div className="space-y-6 max-w-md">
@@ -555,6 +639,19 @@ const Index = () => {
             )}
           </div>
         </div>
+
+        {/* Scroll to Bottom Button */}
+        {userScrolledUp && (
+          <button
+            onClick={forceScrollToBottom}
+            className="fixed bottom-32 right-6 z-40 w-12 h-12 bg-primary text-primary-foreground rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center hover:scale-105"
+            style={{ bottom: `calc(${isMobile ? '160px' : '140px'} + env(safe-area-inset-bottom))` }}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+          </button>
+        )}
 
         <ChatInput 
           onSendMessage={handleSendMessage} 
