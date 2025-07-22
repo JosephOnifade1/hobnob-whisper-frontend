@@ -78,13 +78,24 @@ export const useConversations = () => {
     }
   };
 
-  const createConversation = async (title: string = 'New Conversation') => {
-    if (!user) return null;
+  const validateUserAuthentication = () => {
+    if (!user) {
+      console.error('User not authenticated when attempting conversation operation');
+      throw new Error('User must be authenticated to perform this operation');
+    }
     
+    console.log('User authentication validated:', user.id);
+    return true;
+  };
+
+  const createConversation = async (title: string = 'New Conversation') => {
     try {
-      console.log('Creating new conversation:', title);
+      validateUserAuthentication();
+      
+      console.log('Creating new conversation:', { title, userId: user!.id });
+      
       const { data, error } = await conversationService.create({
-        user_id: user.id,
+        user_id: user!.id,
         title,
       });
       
@@ -93,11 +104,15 @@ export const useConversations = () => {
         throw error;
       }
       
-      // Update local state immediately
-      if (data) {
-        setConversations(prev => [data, ...prev]);
-        setCurrentConversationId(data.id);
+      if (!data) {
+        throw new Error('No conversation data returned from creation');
       }
+      
+      console.log('Conversation created successfully:', data.id);
+      
+      // Update local state immediately
+      setConversations(prev => [data, ...prev]);
+      setCurrentConversationId(data.id);
       
       return data;
     } catch (error) {
@@ -112,17 +127,17 @@ export const useConversations = () => {
   };
 
   const createConversationWithMessage = async (firstMessage: string) => {
-    if (!user) return null;
-    
     try {
+      validateUserAuthentication();
+      
       // Generate title from the first message
       const title = await ChatService.generateTitle([{ role: 'user', content: firstMessage }]);
       
-      console.log('Creating conversation with message, title:', title);
+      console.log('Creating conversation with message:', { title, userId: user!.id });
       
       // Create conversation with the generated title
       const { data, error } = await conversationService.create({
-        user_id: user.id,
+        user_id: user!.id,
         title,
       });
       
@@ -131,11 +146,15 @@ export const useConversations = () => {
         throw error;
       }
       
-      // Update local state immediately
-      if (data) {
-        setConversations(prev => [data, ...prev]);
-        setCurrentConversationId(data.id);
+      if (!data) {
+        throw new Error('No conversation data returned from creation');
       }
+      
+      console.log('Conversation created successfully with message:', data.id);
+      
+      // Update local state immediately
+      setConversations(prev => [data, ...prev]);
+      setCurrentConversationId(data.id);
       
       return data;
     } catch (error) {
@@ -149,10 +168,40 @@ export const useConversations = () => {
     }
   };
 
-  const updateConversationTitle = async (id: string, title: string) => {
-    if (!user) return;
-    
+  const validateConversationOwnership = async (conversationId: string) => {
     try {
+      validateUserAuthentication();
+      
+      console.log('Validating conversation ownership:', { conversationId, userId: user!.id });
+      
+      const { data, error } = await conversationService.getById(conversationId);
+      
+      if (error) {
+        console.error('Error fetching conversation for validation:', error);
+        throw new Error(`Failed to validate conversation ownership: ${error.message}`);
+      }
+      
+      if (!data) {
+        throw new Error('Conversation not found');
+      }
+      
+      if (data.user_id !== user!.id) {
+        throw new Error('User does not own this conversation');
+      }
+      
+      console.log('Conversation ownership validated successfully');
+      return true;
+    } catch (error) {
+      console.error('Conversation ownership validation failed:', error);
+      throw error;
+    }
+  };
+
+  const updateConversationTitle = async (id: string, title: string) => {
+    try {
+      validateUserAuthentication();
+      await validateConversationOwnership(id);
+      
       console.log('Updating conversation title:', id, title);
       const { data, error } = await conversationService.update(id, { title });
       
@@ -183,9 +232,10 @@ export const useConversations = () => {
   };
 
   const deleteConversation = async (id: string) => {
-    if (!user) return;
-    
     try {
+      validateUserAuthentication();
+      await validateConversationOwnership(id);
+      
       console.log('Deleting conversation:', id);
       
       // Use the service method that properly handles deletion
@@ -292,5 +342,6 @@ export const useConversations = () => {
     refreshConversations: loadConversations,
     getCurrentConversationId,
     setCurrentConversationId,
+    validateConversationOwnership, // Export for use in message saving
   };
 };
