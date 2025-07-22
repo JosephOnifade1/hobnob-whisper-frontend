@@ -14,7 +14,6 @@ import GuestMode from '@/components/GuestMode';
 import ModelSelector from '@/components/ModelSelector';
 import { ChatService, type ChatMessage as ServiceChatMessage } from '@/services/chatService';
 import { AIService, AIProvider } from '@/services/aiService';
-
 interface Message {
   id: string;
   content: string;
@@ -25,11 +24,16 @@ interface Message {
   canRetry?: boolean;
   provider?: AIProvider;
 }
-
 const Index = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user, loading: authLoading, initializing } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const {
+    user,
+    loading: authLoading,
+    initializing
+  } = useAuth();
   const {
     createConversation,
     createConversationWithMessage,
@@ -37,7 +41,6 @@ const Index = () => {
     setCurrentConversationId,
     conversations
   } = useConversations();
-
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
@@ -48,10 +51,8 @@ const Index = () => {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [showGuestMode, setShowGuestMode] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<AIProvider>(AIService.getDefaultProvider());
-
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
-
   const scrollToBottom = useCallback(() => {
     if (lastMessageRef.current) {
       lastMessageRef.current.scrollIntoView({
@@ -60,14 +61,12 @@ const Index = () => {
       });
     }
   }, []);
-
   useEffect(() => {
     const timer = setTimeout(() => {
       scrollToBottom();
     }, 100);
     return () => clearTimeout(timer);
   }, [messages, isTyping, scrollToBottom]);
-
   const handleProviderChange = (provider: AIProvider) => {
     setSelectedProvider(provider);
     AIService.setDefaultProvider(provider);
@@ -77,7 +76,6 @@ const Index = () => {
       description: `Switched to ${capabilityName} for optimized performance`
     });
   };
-
   useEffect(() => {
     if (user && !initializing && conversations.length > 0 && !isRestoringState && !currentChatId) {
       const savedConversationId = getCurrentConversationId();
@@ -97,7 +95,6 @@ const Index = () => {
       }
     }
   }, [user, initializing, conversations, currentChatId, isRestoringState]);
-
   const createNewConversation = async () => {
     if (!user) {
       toast({
@@ -125,7 +122,6 @@ const Index = () => {
       });
     }
   };
-
   const sendMessageToAI = async (content: string, isRetry: boolean = false) => {
     if (!user || !currentChatId || isSendingMessage) {
       if (!user) {
@@ -143,7 +139,6 @@ const Index = () => {
       if (!isRetry) {
         await ChatService.saveMessage(currentChatId, 'user', content);
       }
-
       const chatMessages: ServiceChatMessage[] = [...conversationHistory, {
         role: 'user',
         content
@@ -154,15 +149,12 @@ const Index = () => {
         isRetry,
         provider: selectedProvider
       });
-
       const response = await AIService.sendMessage(chatMessages, {
         conversationId: currentChatId,
         userId: user.id,
         provider: selectedProvider
       });
-
       await ChatService.saveMessage(currentChatId, 'assistant', response.message);
-
       if (conversationHistory.length === 0 && !isRetry) {
         const title = await ChatService.generateTitle([{
           role: 'user',
@@ -171,7 +163,6 @@ const Index = () => {
         await ChatService.updateConversationTitle(currentChatId, title);
         console.log('Updated conversation title to:', title);
       }
-
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
         content: response.message,
@@ -185,7 +176,6 @@ const Index = () => {
         }
         return [...prev, aiMessage];
       });
-
       setConversationHistory(prev => {
         if (isRetry) {
           return [...prev, {
@@ -256,16 +246,13 @@ const Index = () => {
       setIsSendingMessage(false);
     }
   };
-
   const handleSendMessage = async (content: string, attachments?: any[]) => {
     if (isSendingMessage) return;
-
     if (!currentChatId) {
       const conversation = await createConversationWithMessage(content);
       if (conversation) {
         setCurrentChatId(conversation.id);
         setCurrentConversationId(conversation.id);
-
         const userMessage: Message = {
           id: `user-${Date.now()}`,
           content,
@@ -275,12 +262,10 @@ const Index = () => {
         };
         setMessages([userMessage]);
         setLastUserMessage(content);
-
         await sendMessageToAI(content);
       }
       return;
     }
-
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       content,
@@ -292,27 +277,21 @@ const Index = () => {
     setLastUserMessage(content);
     await sendMessageToAI(content);
   };
-
   const handleRetryMessage = async () => {
     if (lastUserMessage && !isSendingMessage) {
       await sendMessageToAI(lastUserMessage, true);
     }
   };
-
   const handleNewChat = () => {
     createNewConversation();
     setSidebarOpen(false);
   };
-
   const handleChatSelect = async (chatId: string) => {
     if (chatId === currentChatId) return;
-
     try {
       setCurrentChatId(chatId);
       setCurrentConversationId(chatId);
-
       const dbMessages = await ChatService.getConversationMessages(chatId);
-
       const uiMessages: Message[] = dbMessages.map(msg => ({
         id: msg.id,
         content: msg.content,
@@ -320,7 +299,6 @@ const Index = () => {
         timestamp: new Date(msg.created_at)
       }));
       setMessages(uiMessages);
-
       const history: ServiceChatMessage[] = dbMessages.map(msg => ({
         role: msg.role as 'user' | 'assistant',
         content: msg.content
@@ -340,10 +318,8 @@ const Index = () => {
       });
     }
   };
-
   if (initializing) {
-    return (
-      <div className="flex h-screen bg-background text-foreground items-center justify-center">
+    return <div className="flex h-screen bg-background text-foreground items-center justify-center">
         <div className="text-center space-y-6">
           <div className="relative">
             <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary/30 border-t-primary mx-auto"></div>
@@ -354,17 +330,13 @@ const Index = () => {
             <p className="text-muted-foreground text-sm">Setting up your intelligent assistant...</p>
           </div>
         </div>
-      </div>
-    );
+      </div>;
   }
-
   if (showGuestMode && !user) {
     return <GuestMode />;
   }
-
   if (!user && !authLoading) {
-    return (
-      <div className="flex h-screen bg-background text-foreground items-center justify-center relative overflow-hidden">
+    return <div className="flex h-screen bg-background text-foreground items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-purple-500/5"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,_hsl(var(--primary))_0%,_transparent_50%)] opacity-10"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,_hsl(var(--purple-500))_0%,_transparent_50%)] opacity-10"></div>
@@ -400,11 +372,7 @@ const Index = () => {
           </div>
           
           <div className="space-y-4">
-            <Button 
-              onClick={() => navigate('/auth')} 
-              className="w-full btn-primary py-4 text-base font-medium"
-              size="lg"
-            >
+            <Button onClick={() => navigate('/auth')} className="w-full btn-primary py-4 text-base font-medium" size="lg">
               <Sparkles className="h-5 w-5 mr-2" />
               Get Started
             </Button>
@@ -415,12 +383,7 @@ const Index = () => {
               <div className="flex-1 border-t border-border/50"></div>
             </div>
             
-            <Button 
-              onClick={() => setShowGuestMode(true)} 
-              variant="outline" 
-              className="w-full btn-secondary py-4 text-base font-medium"
-              size="lg"
-            >
+            <Button onClick={() => setShowGuestMode(true)} variant="outline" className="w-full btn-secondary py-4 text-base font-medium" size="lg">
               Continue as Guest
             </Button>
             
@@ -429,36 +392,22 @@ const Index = () => {
             </p>
           </div>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="flex h-screen bg-background text-foreground">
-      <ChatSidebar 
-        isOpen={sidebarOpen} 
-        onToggle={() => setSidebarOpen(!sidebarOpen)} 
-        currentChatId={currentChatId || ''} 
-        onChatSelect={handleChatSelect} 
-        onNewChat={handleNewChat} 
-      />
+  return <div className="flex h-screen bg-background text-foreground">
+      <ChatSidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} currentChatId={currentChatId || ''} onChatSelect={handleChatSelect} onNewChat={handleNewChat} />
 
       <div className="flex-1 flex flex-col lg:ml-0">
         <div className="glass-card border-b border-border/50 backdrop-blur-xl">
           <div className="p-4 lg:p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setSidebarOpen(true)} 
-                  className="lg:hidden text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-xl p-3"
-                >
+                <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(true)} className="lg:hidden text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-xl p-3">
                   <Menu className="h-5 w-5" />
                 </Button>
                 <div className="flex items-center gap-6">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center">
+                    <div className="w-8 h-8 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center mx-[21px] px-[6px]">
                       <Sparkles className="h-4 w-4 text-white" />
                     </div>
                     <h1 className="text-xl font-bold">
@@ -466,23 +415,13 @@ const Index = () => {
                       {user && <span className="text-sm font-normal text-muted-foreground ml-2">• {user.email}</span>}
                     </h1>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => navigate('/tools')} 
-                    className="text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-xl px-4 py-2"
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/tools')} className="text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-xl px-4 py-2">
                     Tools Dashboard
                   </Button>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <ModelSelector 
-                  selectedProvider={selectedProvider} 
-                  onProviderChange={handleProviderChange} 
-                  disabled={isTyping || isSendingMessage} 
-                  compact 
-                />
+                <ModelSelector selectedProvider={selectedProvider} onProviderChange={handleProviderChange} disabled={isTyping || isSendingMessage} compact />
                 <ThemeToggle />
               </div>
             </div>
@@ -491,8 +430,7 @@ const Index = () => {
 
         <div ref={chatContainerRef} className="flex-1 overflow-y-auto pb-32">
           <div className="space-y-0">
-            {messages.length === 0 && !isTyping && !isRestoringState && (
-              <div className="flex items-center justify-center h-full text-center p-8">
+            {messages.length === 0 && !isTyping && !isRestoringState && <div className="flex items-center justify-center h-full text-center p-8">
                 <div className="space-y-6 max-w-md">
                   <div className="relative">
                     <div className="w-16 h-16 bg-gradient-to-br from-primary via-purple-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-xl mx-auto">
@@ -506,17 +444,11 @@ const Index = () => {
                       Ask me anything! I'm Hobnob AI, your intelligent assistant ready to help with any task.
                     </p>
                   </div>
-                  <ModelSelector 
-                    selectedProvider={selectedProvider} 
-                    onProviderChange={handleProviderChange} 
-                    disabled={isTyping || isSendingMessage} 
-                  />
+                  <ModelSelector selectedProvider={selectedProvider} onProviderChange={handleProviderChange} disabled={isTyping || isSendingMessage} />
                 </div>
-              </div>
-            )}
+              </div>}
             
-            {isRestoringState && (
-              <div className="flex items-center justify-center h-full text-center p-8">
+            {isRestoringState && <div className="flex items-center justify-center h-full text-center p-8">
                 <div className="space-y-4">
                   <div className="relative">
                     <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary/30 border-t-primary mx-auto"></div>
@@ -524,47 +456,26 @@ const Index = () => {
                   </div>
                   <p className="text-muted-foreground font-medium">Restoring conversation...</p>
                 </div>
-              </div>
-            )}
+              </div>}
             
-            {messages.map((message, index) => (
-              <div key={message.id} className="group">
-                <ChatMessage 
-                  message={message} 
-                  ref={index === messages.length - 1 ? lastMessageRef : null} 
-                />
-                {message.isError && message.canRetry && index === messages.length - 1 && (
-                  <div className="flex justify-center py-6">
-                    <Button 
-                      onClick={handleRetryMessage} 
-                      variant="outline" 
-                      size="sm" 
-                      className="gap-2 btn-secondary hover:scale-105 transition-transform" 
-                      disabled={isTyping || isSendingMessage}
-                    >
+            {messages.map((message, index) => <div key={message.id} className="group">
+                <ChatMessage message={message} ref={index === messages.length - 1 ? lastMessageRef : null} />
+                {message.isError && message.canRetry && index === messages.length - 1 && <div className="flex justify-center py-6">
+                    <Button onClick={handleRetryMessage} variant="outline" size="sm" className="gap-2 btn-secondary hover:scale-105 transition-transform" disabled={isTyping || isSendingMessage}>
                       <RefreshCw className="h-4 w-4" />
                       Try Again
                     </Button>
-                  </div>
-                )}
-              </div>
-            ))}
+                  </div>}
+              </div>)}
             
-            {isTyping && (
-              <div ref={lastMessageRef}>
+            {isTyping && <div ref={lastMessageRef}>
                 <TypingIndicator />
-              </div>
-            )}
+              </div>}
           </div>
         </div>
 
-        <ChatInput 
-          onSendMessage={handleSendMessage} 
-          disabled={isTyping || !user || isRestoringState || isSendingMessage} 
-        />
+        <ChatInput onSendMessage={handleSendMessage} disabled={isTyping || !user || isRestoringState || isSendingMessage} />
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
