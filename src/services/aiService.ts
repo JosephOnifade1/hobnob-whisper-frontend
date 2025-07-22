@@ -44,15 +44,15 @@ export class AIService {
     messages: AIMessage[],
     options: AIServiceOptions = {}
   ): Promise<AIResponse> {
-    // For guest users, always use DeepSeek
+    // For guest users, always use Lightning Mode (deepseek)
     const provider = options.isGuest ? 'deepseek' : (options.provider || this.getDefaultProvider());
     
     try {
-      console.log(`Sending message via ${provider} provider`);
+      console.log(`Processing message with ${provider === 'openai' ? 'Enhanced Mode' : 'Lightning Mode'}`);
       
       let response;
       if (options.isGuest) {
-        // For guest users, use the guest chat service with DeepSeek
+        // For guest users, use the guest chat service with Lightning Mode
         response = await GuestChatService.sendMessage(messages);
       } else if (provider === 'deepseek') {
         response = await DeepSeekService.sendMessage(messages, options);
@@ -65,12 +65,13 @@ export class AIService {
         provider,
       };
     } catch (error) {
-      console.error(`Error with ${provider} provider:`, error);
+      console.error(`Error with ${provider === 'openai' ? 'Enhanced Mode' : 'Lightning Mode'}:`, error);
       
-      // Try fallback provider if the primary one fails (only for authenticated users)
+      // Try fallback capability if the primary one fails (only for authenticated users)
       if (!options.isGuest) {
         const fallbackProvider: AIProvider = provider === 'openai' ? 'deepseek' : 'openai';
-        console.log(`Attempting fallback to ${fallbackProvider}`);
+        const fallbackMode = fallbackProvider === 'openai' ? 'Enhanced Mode' : 'Lightning Mode';
+        console.log(`Attempting fallback to ${fallbackMode}`);
         
         try {
           let fallbackResponse;
@@ -85,7 +86,7 @@ export class AIService {
             provider: fallbackProvider,
           };
         } catch (fallbackError) {
-          console.error(`Fallback to ${fallbackProvider} also failed:`, fallbackError);
+          console.error(`Fallback to ${fallbackMode} also failed:`, fallbackError);
         }
       }
       
@@ -97,12 +98,12 @@ export class AIService {
     return [
       {
         value: 'openai',
-        label: 'OpenAI GPT-4.1',
+        label: 'Enhanced Mode',
         description: 'Advanced reasoning and creativity'
       },
       {
         value: 'deepseek',
-        label: 'DeepSeek V3',
+        label: 'Lightning Mode',
         description: 'Fast and efficient responses'
       }
     ];

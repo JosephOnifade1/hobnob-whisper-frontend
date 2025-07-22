@@ -49,11 +49,9 @@ const Index = () => {
   const [showGuestMode, setShowGuestMode] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<AIProvider>(AIService.getDefaultProvider());
 
-  // Refs for auto-scrolling
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new messages are added
   const scrollToBottom = useCallback(() => {
     if (lastMessageRef.current) {
       lastMessageRef.current.scrollIntoView({
@@ -63,7 +61,6 @@ const Index = () => {
     }
   }, []);
 
-  // Scroll to bottom when messages change or typing starts
   useEffect(() => {
     const timer = setTimeout(() => {
       scrollToBottom();
@@ -71,17 +68,16 @@ const Index = () => {
     return () => clearTimeout(timer);
   }, [messages, isTyping, scrollToBottom]);
 
-  // Handle provider change
   const handleProviderChange = (provider: AIProvider) => {
     setSelectedProvider(provider);
     AIService.setDefaultProvider(provider);
+    const capabilityName = provider === 'openai' ? 'Enhanced Mode' : 'Lightning Mode';
     toast({
-      title: "AI Model Changed",
-      description: `Switched to ${provider === 'openai' ? 'OpenAI GPT-4.1' : 'DeepSeek Reasoner'}`
+      title: "AI Capability Changed",
+      description: `Switched to ${capabilityName} for optimized performance`
     });
   };
 
-  // Restore conversation state when user is available - prevent multiple calls
   useEffect(() => {
     if (user && !initializing && conversations.length > 0 && !isRestoringState && !currentChatId) {
       const savedConversationId = getCurrentConversationId();
@@ -92,7 +88,6 @@ const Index = () => {
           setIsRestoringState(false);
         });
       } else if (conversations.length > 0) {
-        // If no saved conversation, select the most recent one
         const mostRecent = conversations[0];
         console.log('Selecting most recent conversation:', mostRecent.id);
         setIsRestoringState(true);
@@ -145,34 +140,29 @@ const Index = () => {
     setIsSendingMessage(true);
     setIsTyping(true);
     try {
-      // Save user message to database only if not a retry
       if (!isRetry) {
         await ChatService.saveMessage(currentChatId, 'user', content);
       }
 
-      // Prepare conversation history for AI
       const chatMessages: ServiceChatMessage[] = [...conversationHistory, {
         role: 'user',
         content
       }];
-      console.log('Sending to AI via unified service:', {
+      console.log('Sending to Hobnob AI:', {
         messageCount: chatMessages.length,
         currentChatId,
         isRetry,
         provider: selectedProvider
       });
 
-      // Call AI through our unified service
       const response = await AIService.sendMessage(chatMessages, {
         conversationId: currentChatId,
         userId: user.id,
         provider: selectedProvider
       });
 
-      // Save AI response to database
       await ChatService.saveMessage(currentChatId, 'assistant', response.message);
 
-      // Update conversation title if it's the first exchange
       if (conversationHistory.length === 0 && !isRetry) {
         const title = await ChatService.generateTitle([{
           role: 'user',
@@ -182,7 +172,6 @@ const Index = () => {
         console.log('Updated conversation title to:', title);
       }
 
-      // Add AI response to UI
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
         content: response.message,
@@ -192,16 +181,13 @@ const Index = () => {
       };
       setMessages(prev => {
         if (isRetry) {
-          // Remove the last error message and add the new response
           return [...prev.slice(0, -1), aiMessage];
         }
         return [...prev, aiMessage];
       });
 
-      // Update conversation history
       setConversationHistory(prev => {
         if (isRetry) {
-          // For retries, just update with the new AI response
           return [...prev, {
             role: 'assistant',
             content: response.message
@@ -215,15 +201,16 @@ const Index = () => {
           content: response.message
         }];
       });
-      console.log('AI response received successfully:', {
+      console.log('Hobnob AI response received successfully:', {
         length: response.message.length,
         usage: response.usage,
         provider: response.provider
       });
       if (isRetry) {
+        const capabilityName = response.provider === 'openai' ? 'Enhanced Mode' : 'Lightning Mode';
         toast({
           title: "Success!",
-          description: `Message sent successfully using ${response.provider === 'openai' ? 'OpenAI' : 'DeepSeek'}.`
+          description: `Message sent successfully using ${capabilityName}.`
         });
       }
     } catch (error) {
@@ -271,16 +258,14 @@ const Index = () => {
   };
 
   const handleSendMessage = async (content: string, attachments?: any[]) => {
-    if (isSendingMessage) return; // Prevent duplicate sends
+    if (isSendingMessage) return;
 
-    // Create new conversation with the first message if none exists
     if (!currentChatId) {
       const conversation = await createConversationWithMessage(content);
       if (conversation) {
         setCurrentChatId(conversation.id);
         setCurrentConversationId(conversation.id);
 
-        // Add user message to UI
         const userMessage: Message = {
           id: `user-${Date.now()}`,
           content,
@@ -291,13 +276,11 @@ const Index = () => {
         setMessages([userMessage]);
         setLastUserMessage(content);
 
-        // Send to AI after conversation is created
         await sendMessageToAI(content);
       }
       return;
     }
 
-    // Add user message to UI
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       content,
@@ -322,16 +305,14 @@ const Index = () => {
   };
 
   const handleChatSelect = async (chatId: string) => {
-    if (chatId === currentChatId) return; // Prevent reloading the same chat
+    if (chatId === currentChatId) return;
 
     try {
       setCurrentChatId(chatId);
       setCurrentConversationId(chatId);
 
-      // Load messages for this conversation
       const dbMessages = await ChatService.getConversationMessages(chatId);
 
-      // Convert DB messages to UI format
       const uiMessages: Message[] = dbMessages.map(msg => ({
         id: msg.id,
         content: msg.content,
@@ -340,7 +321,6 @@ const Index = () => {
       }));
       setMessages(uiMessages);
 
-      // Build conversation history for OpenAI context
       const history: ServiceChatMessage[] = dbMessages.map(msg => ({
         role: msg.role as 'user' | 'assistant',
         content: msg.content
@@ -361,7 +341,6 @@ const Index = () => {
     }
   };
 
-  // Show loading state during initialization
   if (initializing) {
     return (
       <div className="flex h-screen bg-background text-foreground items-center justify-center">
@@ -379,22 +358,18 @@ const Index = () => {
     );
   }
 
-  // Show guest mode if user chooses to continue as guest
   if (showGuestMode && !user) {
     return <GuestMode />;
   }
 
-  // Show authentication options if not logged in
   if (!user && !authLoading) {
     return (
       <div className="flex h-screen bg-background text-foreground items-center justify-center relative overflow-hidden">
-        {/* Animated background */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-purple-500/5"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,_hsl(var(--primary))_0%,_transparent_50%)] opacity-10"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,_hsl(var(--purple-500))_0%,_transparent_50%)] opacity-10"></div>
         
         <div className="relative z-10 text-center space-y-8 max-w-lg p-8 mx-4">
-          {/* Logo/Brand */}
           <div className="space-y-4">
             <div className="relative inline-block">
               <div className="w-20 h-20 bg-gradient-to-br from-primary via-purple-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-xl mx-auto">
@@ -406,17 +381,16 @@ const Index = () => {
               <span className="text-gradient">Hobnob AI</span>
             </h1>
             <p className="text-muted-foreground text-lg leading-relaxed text-balance">
-              Your intelligent AI assistant powered by cutting-edge language models. 
+              Your intelligent AI assistant with adaptive capabilities. 
               Experience the future of conversational AI.
             </p>
           </div>
           
-          {/* Features */}
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="glass-card p-4 text-left">
               <Zap className="h-5 w-5 text-primary mb-2" />
-              <div className="font-medium">Multiple AI Models</div>
-              <div className="text-muted-foreground text-xs">OpenAI GPT-4.1 & DeepSeek</div>
+              <div className="font-medium">Multiple AI Modes</div>
+              <div className="text-muted-foreground text-xs">Enhanced & Lightning capabilities</div>
             </div>
             <div className="glass-card p-4 text-left">
               <Bot className="h-5 w-5 text-primary mb-2" />
@@ -461,7 +435,6 @@ const Index = () => {
 
   return (
     <div className="flex h-screen bg-background text-foreground">
-      {/* Sidebar */}
       <ChatSidebar 
         isOpen={sidebarOpen} 
         onToggle={() => setSidebarOpen(!sidebarOpen)} 
@@ -470,9 +443,7 @@ const Index = () => {
         onNewChat={handleNewChat} 
       />
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col lg:ml-0">
-        {/* Enhanced Header */}
         <div className="glass-card border-b border-border/50 backdrop-blur-xl">
           <div className="p-4 lg:p-6">
             <div className="flex items-center justify-between">
@@ -518,7 +489,6 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Chat Area */}
         <div ref={chatContainerRef} className="flex-1 overflow-y-auto pb-32">
           <div className="space-y-0">
             {messages.length === 0 && !isTyping && !isRestoringState && (
@@ -533,7 +503,7 @@ const Index = () => {
                   <div className="space-y-3">
                     <h2 className="text-2xl font-bold text-gradient">Start a conversation</h2>
                     <p className="text-muted-foreground leading-relaxed">
-                      Ask me anything! I'm powered by advanced AI models and ready to help with any task.
+                      Ask me anything! I'm Hobnob AI, your intelligent assistant ready to help with any task.
                     </p>
                   </div>
                   <ModelSelector 
@@ -588,7 +558,6 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Input Area */}
         <ChatInput 
           onSendMessage={handleSendMessage} 
           disabled={isTyping || !user || isRestoringState || isSendingMessage} 

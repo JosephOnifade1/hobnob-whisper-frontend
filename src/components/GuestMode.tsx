@@ -9,7 +9,7 @@ import ChatMessage from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
 import TypingIndicator from '@/components/TypingIndicator';
 import ThemeToggle from '@/components/ThemeToggle';
-import { Crown, Upload, MessageSquare, Users, Star, UserPlus, Zap } from 'lucide-react';
+import { Crown, Upload, MessageSquare, Users, Star, UserPlus, Zap, Sparkles } from 'lucide-react';
 
 const GuestMode = () => {
   const navigate = useNavigate();
@@ -54,11 +54,11 @@ const GuestMode = () => {
         { role: 'user' as const, content }
       ];
 
-      console.log('Sending guest message to AI with DeepSeek provider');
+      console.log('Sending guest message to Hobnob AI');
 
       const response = await AIService.sendMessage(chatMessages, {
         isGuest: true,
-        provider: 'deepseek', // Always use DeepSeek for guest mode
+        provider: 'deepseek', // Lightning Mode for guest users
       });
 
       // Add AI response
@@ -71,7 +71,7 @@ const GuestMode = () => {
       if (isRetry) {
         toast({
           title: "Success!",
-          description: "Message sent successfully using DeepSeek Reasoner.",
+          description: "Message sent successfully using Lightning Mode.",
         });
       }
 
@@ -143,12 +143,17 @@ const GuestMode = () => {
         <div className="bg-card border-b border-border p-4 backdrop-blur-md bg-opacity-80">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <h1 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                Hobnob AI - Guest Mode
-              </h1>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center">
+                  <Sparkles className="h-4 w-4 text-white" />
+                </div>
+                <h1 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                  Hobnob AI - Guest Mode
+                </h1>
+              </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Zap className="h-4 w-4 text-orange-500" />
-                <span>Powered by DeepSeek Reasoner</span>
+                <span>Lightning Mode Active</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -171,10 +176,10 @@ const GuestMode = () => {
               <Crown className="h-5 w-5 text-yellow-600" />
               <div>
                 <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                  Unlock the full experience!
+                  Unlock the full Hobnob AI experience!
                 </p>
                 <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                  Sign up for unlimited messages, multiple AI models, file uploads, and conversation history
+                  Sign up for unlimited messages, Enhanced Mode, file uploads, and conversation history
                 </p>
               </div>
             </div>
@@ -194,22 +199,28 @@ const GuestMode = () => {
             {messages.length === 0 && !isTyping && (
               <div className="flex items-center justify-center h-full text-center p-8">
                 <div className="space-y-6 max-w-md">
+                  <div className="relative">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary via-purple-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-xl mx-auto">
+                      <Sparkles className="h-8 w-8 text-white" />
+                    </div>
+                    <div className="absolute -inset-2 bg-gradient-to-br from-primary/20 to-purple-600/20 rounded-3xl blur-xl"></div>
+                  </div>
                   <h2 className="text-xl font-semibold">Welcome to Hobnob AI</h2>
                   <p className="text-muted-foreground">
-                    Try our AI assistant for free! Powered by DeepSeek Reasoner for fast and intelligent responses.
+                    Try our AI assistant for free! Currently running in Lightning Mode for fast and intelligent responses.
                   </p>
                   
                   <div className="flex items-center justify-center gap-2 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
                     <Zap className="h-5 w-5 text-orange-500" />
                     <span className="text-sm font-medium text-orange-800 dark:text-orange-200">
-                      DeepSeek Reasoner - Unlimited messages in guest mode
+                      Lightning Mode - Unlimited messages in guest mode
                     </span>
                   </div>
                   
                   <div className="grid grid-cols-1 gap-3 text-sm">
                     <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                       <Star className="h-4 w-4" />
-                      <span>Fast AI responses with DeepSeek Reasoner</span>
+                      <span>Fast AI responses with Lightning Mode</span>
                     </div>
                     <div className="flex items-center gap-2 text-gray-500">
                       <Upload className="h-4 w-4" />

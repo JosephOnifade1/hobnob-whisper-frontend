@@ -18,64 +18,87 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   disabled = false,
   compact = false
 }) => {
-  const providers = AIService.getAvailableProviders();
-
-  const getProviderIcon = (provider: AIProvider) => {
+  const getCapabilityInfo = (provider: AIProvider) => {
     switch (provider) {
       case 'openai':
-        return <Brain className="h-4 w-4" />;
+        return {
+          name: 'Enhanced Mode',
+          description: 'Advanced reasoning and creativity',
+          icon: <Brain className="h-4 w-4" />
+        };
       case 'deepseek':
-        return <Zap className="h-4 w-4" />;
+        return {
+          name: 'Lightning Mode',
+          description: 'Fast and efficient responses',
+          icon: <Zap className="h-4 w-4" />
+        };
       default:
-        return <Brain className="h-4 w-4" />;
+        return {
+          name: 'Enhanced Mode',
+          description: 'Advanced capabilities',
+          icon: <Brain className="h-4 w-4" />
+        };
     }
   };
+
+  const capabilities = [
+    {
+      value: 'openai' as AIProvider,
+      ...getCapabilityInfo('openai')
+    },
+    {
+      value: 'deepseek' as AIProvider,
+      ...getCapabilityInfo('deepseek')
+    }
+  ];
 
   if (compact) {
     return (
       <div className="flex items-center gap-1">
-        {providers.map((provider) => (
+        {capabilities.map((capability) => (
           <Button
-            key={provider.value}
-            variant={selectedProvider === provider.value ? "default" : "ghost"}
+            key={capability.value}
+            variant={selectedProvider === capability.value ? "default" : "ghost"}
             size="sm"
-            onClick={() => onProviderChange(provider.value)}
+            onClick={() => onProviderChange(capability.value)}
             disabled={disabled}
             className="gap-1 text-xs"
           >
-            {getProviderIcon(provider.value)}
-            {provider.label.split(' ')[0]}
+            {capability.icon}
+            {capability.name.split(' ')[0]}
           </Button>
         ))}
       </div>
     );
   }
 
+  const currentCapability = getCapabilityInfo(selectedProvider);
+
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium">AI Model</label>
+      <label className="text-sm font-medium">AI Capability</label>
       <Select
         value={selectedProvider}
         onValueChange={onProviderChange}
         disabled={disabled}
       >
         <SelectTrigger className="w-full">
-          <SelectValue placeholder="Select AI model">
+          <SelectValue placeholder="Select AI capability">
             <div className="flex items-center gap-2">
-              {getProviderIcon(selectedProvider)}
-              {providers.find(p => p.value === selectedProvider)?.label}
+              {currentCapability.icon}
+              {currentCapability.name}
             </div>
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
-          {providers.map((provider) => (
-            <SelectItem key={provider.value} value={provider.value}>
+          {capabilities.map((capability) => (
+            <SelectItem key={capability.value} value={capability.value}>
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-2">
-                  {getProviderIcon(provider.value)}
+                  {capability.icon}
                   <div>
-                    <div className="font-medium">{provider.label}</div>
-                    <div className="text-xs text-muted-foreground">{provider.description}</div>
+                    <div className="font-medium">{capability.name}</div>
+                    <div className="text-xs text-muted-foreground">{capability.description}</div>
                   </div>
                 </div>
               </div>
