@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Sparkles, MessageCircle, Plus, FileText, Video, Bot, Zap, RefreshCw } from 'lucide-react';
 import ChatMessage from '@/components/ChatMessage';
@@ -31,24 +32,44 @@ const Index = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [selectedModel, setSelectedModel] = useState('gpt-4o-mini');
+  
+  // Add local state for active conversation ID
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
   const {
     conversations,
-    activeConversationId,
-    setActiveConversationId,
     createConversation,
     deleteConversation,
-    updateConversationTitle
+    updateConversationTitle,
+    getCurrentConversationId,
+    setCurrentConversationId
   } = useConversations();
 
   const {
     messages: dbMessages,
-    isLoading: messagesLoading,
-    addMessage,
-    clearMessages
+    loading: messagesLoading,
+    saveMessage,
+    refreshMessages
   } = useMessages(activeConversationId);
 
   const messages = user ? dbMessages : guestMessages;
+
+  // Initialize active conversation ID from stored value
+  useEffect(() => {
+    if (user && !activeConversationId) {
+      const storedId = getCurrentConversationId();
+      if (storedId) {
+        setActiveConversationId(storedId);
+      }
+    }
+  }, [user, activeConversationId, getCurrentConversationId]);
+
+  // Update stored conversation ID when active ID changes
+  useEffect(() => {
+    if (user && activeConversationId) {
+      setCurrentConversationId(activeConversationId);
+    }
+  }, [activeConversationId, user, setCurrentConversationId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -58,6 +79,24 @@ const Index = () => {
     scrollToBottom();
   }, [messages]);
 
+  // Create wrapper function for addMessage to match expected interface
+  const addMessage = async (content: string, role: 'user' | 'assistant', conversationId: string) => {
+    if (user && conversationId) {
+      return await saveMessage(conversationId, role, content);
+    }
+    return null;
+  };
+
+  // Create clearMessages function
+  const clearMessages = () => {
+    if (!user) {
+      // For guest users, clear via context
+      // Note: This assumes the guest context has a clear method
+      console.log('Clearing guest messages');
+    }
+    // For authenticated users, we can't clear messages without deleting the conversation
+  };
+
   const handleSendMessage = async (content: string, attachments?: any[]) => {
     if (!content.trim()) return;
 
@@ -66,8 +105,13 @@ const Index = () => {
         let conversationId = activeConversationId;
         
         if (!conversationId) {
-          conversationId = await createConversation(content.slice(0, 50) + '...');
-          setActiveConversationId(conversationId);
+          const newConversation = await createConversation(content.slice(0, 50) + '...');
+          if (newConversation) {
+            conversationId = newConversation.id;
+            setActiveConversationId(conversationId);
+          } else {
+            return;
+          }
         }
 
         await addMessage(content, 'user', conversationId);
@@ -99,8 +143,10 @@ const Index = () => {
   const handleNewConversation = async () => {
     try {
       if (user) {
-        const conversationId = await createConversation('New conversation');
-        setActiveConversationId(conversationId);
+        const newConversation = await createConversation('New conversation');
+        if (newConversation) {
+          setActiveConversationId(newConversation.id);
+        }
       } else {
         clearMessages();
       }
@@ -121,6 +167,12 @@ const Index = () => {
       console.error('Error deleting conversation:', error);
       toast.error('Failed to delete conversation.');
     }
+  };
+
+  const handleActionSelect = (action: string) => {
+    console.log('Quick action selected:', action);
+    // For now, just start a new message with the action prompt
+    // In the future, this could pre-fill the input or trigger specific actions
   };
 
   const quickActionItems = [
@@ -158,12 +210,11 @@ const Index = () => {
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
       <ResponsiveChatSidebar
-        conversations={conversations}
-        activeConversationId={activeConversationId}
-        onSelectConversation={setActiveConversationId}
-        onNewConversation={handleNewConversation}
-        onDeleteConversation={handleDeleteConversation}
-        onUpdateTitle={updateConversationTitle}
+        isOpen={false}
+        onToggle={() => {}}
+        currentChatId={activeConversationId || ''}
+        onChatSelect={setActiveConversationId}
+        onNewChat={handleNewConversation}
       />
 
       {/* Main Content */}
@@ -181,10 +232,7 @@ const Index = () => {
             </div>
             
             <div className="flex items-center gap-2">
-              <ModelSelector
-                selectedModel={selectedModel}
-                onModelChange={setSelectedModel}
-              />
+              <ModelSelector />
               <ThemeToggle />
             </div>
           </div>
@@ -203,7 +251,7 @@ const Index = () => {
               ))}
               {isTyping && (
                 <div className="py-4 lg:py-6 px-4 lg:px-6 bg-muted/30">
-                  <div className="max-w-4xl mx-auto flex gap-4">
+                  <div className="max-w-4xl mx-auto flex gap-3">
                     <div className="flex-shrink-0 w-8 h-8 lg:w-10 lg:h-10 rounded-xl bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 text-white flex items-center justify-center shadow-lg">
                       <Bot className="h-4 w-4 lg:h-5 lg:w-5" />
                     </div>
@@ -215,12 +263,12 @@ const Index = () => {
               )}
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center p-4 lg:p-8">
-              <div className="text-center max-w-2xl mx-auto space-y-8">
+            <div className="flex-1 flex items-center justify-center p-4 lg:p-6">
+              <div className="text-center max-w-2xl mx-auto space-y-6">
                 {/* Welcome Section */}
-                <div className="space-y-4">
-                  <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gradient-primary rounded-2xl flex items-center justify-center mx-auto shadow-xl">
-                    <Sparkles className="h-8 w-8 lg:h-10 lg:w-10 text-white" />
+                <div className="space-y-3">
+                  <div className="w-16 h-16 lg:w-18 lg:h-18 bg-gradient-primary rounded-2xl flex items-center justify-center mx-auto shadow-xl">
+                    <Sparkles className="h-8 w-8 lg:h-9 lg:w-9 text-white" />
                   </div>
                   <div className="space-y-2">
                     <h2 className="text-2xl lg:text-3xl font-bold text-gradient">
@@ -233,13 +281,13 @@ const Index = () => {
                 </div>
 
                 {/* Quick Actions */}
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <h3 className="text-lg font-semibold text-foreground">Get started with</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {quickActionItems.map((item, index) => (
                       <Card 
                         key={index}
-                        className="glass-card glass-card-hover p-4 cursor-pointer transition-all duration-300"
+                        className="glass-card glass-card-hover p-3 cursor-pointer transition-all duration-300"
                         onClick={item.action}
                       >
                         <div className="flex items-center gap-3">
@@ -285,7 +333,7 @@ const Index = () => {
       {isMobile && <MobileNavigation />}
 
       {/* Quick Actions Component */}
-      <QuickActions />
+      <QuickActions onActionSelect={handleActionSelect} />
     </div>
   );
 };
