@@ -31,7 +31,7 @@ const Index = () => {
   const { isMobile } = useDeviceType();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isTyping, setIsTyping] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('gpt-4o-mini');
+  const [selectedModel, setSelectedModel] = useState<'openai' | 'deepseek'>('openai');
   
   // Add local state for active conversation ID
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -91,7 +91,6 @@ const Index = () => {
   const clearMessages = () => {
     if (!user) {
       // For guest users, clear via context
-      // Note: This assumes the guest context has a clear method
       console.log('Clearing guest messages');
     }
     // For authenticated users, we can't clear messages without deleting the conversation
@@ -119,7 +118,7 @@ const Index = () => {
 
         // Simulate AI response
         setTimeout(async () => {
-          const aiResponse = `I understand you said: "${content}". This is a simulated response from ${selectedModel}. How can I help you further?`;
+          const aiResponse = `I understand you said: "${content}". This is a simulated response from ${selectedModel === 'openai' ? 'Enhanced Mode' : 'Lightning Mode'}. How can I help you further?`;
           await addMessage(aiResponse, 'assistant', conversationId);
           setIsTyping(false);
         }, 1500);
@@ -128,7 +127,7 @@ const Index = () => {
         setIsTyping(true);
 
         setTimeout(() => {
-          const aiResponse = `I understand you said: "${content}". This is a simulated response from ${selectedModel}. How can I help you further?`;
+          const aiResponse = `I understand you said: "${content}". This is a simulated response from ${selectedModel === 'openai' ? 'Enhanced Mode' : 'Lightning Mode'}. How can I help you further?`;
           addGuestMessage(aiResponse, 'assistant');
           setIsTyping(false);
         }, 1500);
@@ -232,7 +231,11 @@ const Index = () => {
             </div>
             
             <div className="flex items-center gap-2">
-              <ModelSelector />
+              <ModelSelector 
+                selectedProvider={selectedModel}
+                onProviderChange={setSelectedModel}
+                compact
+              />
               <ThemeToggle />
             </div>
           </div>
