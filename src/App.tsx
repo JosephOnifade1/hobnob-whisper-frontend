@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,6 +14,7 @@ import AIAgent from "./pages/AIAgent";
 import NotFound from "./pages/NotFound";
 import ToolsDashboard from "./pages/ToolsDashboard";
 import AvatarGenerator from "./pages/AvatarGenerator";
+import DocumentConverter from "./pages/DocumentConverter";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +47,7 @@ const App = () => {
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/tools" element={<ToolsDashboard />} />
                 <Route path="/tools/avatar-generator" element={<AvatarGenerator />} />
+                <Route path="/tools/document-converter" element={<DocumentConverter />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

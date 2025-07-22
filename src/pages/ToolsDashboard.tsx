@@ -26,12 +26,12 @@ const ToolsDashboard = () => {
     {
       id: 'document-converter',
       title: 'Document Converter',
-      description: 'Convert between PDF, JPG, DOCX formats and extract YouTube to MP3',
+      description: 'Convert between PDF, DOCX, JPG, PNG, and TXT formats with ease',
       icon: FileImage,
       category: 'Content',
       route: '/tools/document-converter',
       emoji: '🌀',
-      comingSoon: true,
+      isNew: true,
     },
   ];
 
