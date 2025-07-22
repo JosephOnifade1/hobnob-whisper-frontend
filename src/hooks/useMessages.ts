@@ -4,18 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { messageService } from '@/services/database';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-
-interface Message {
-  id: string;
-  conversation_id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  attachments?: any[];
-  created_at: string;
-}
+import { ChatMessage } from '@/types/database';
 
 export const useMessages = (conversationId: string | null) => {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -69,7 +61,7 @@ export const useMessages = (conversationId: string | null) => {
         throw error;
       }
       
-      const validMessages = data || [];
+      const validMessages = (data || []) as ChatMessage[];
       console.log('Loaded messages:', validMessages.length);
       setMessages(validMessages);
       
@@ -90,7 +82,7 @@ export const useMessages = (conversationId: string | null) => {
     role: 'user' | 'assistant', 
     content: string,
     retryCount = 0
-  ): Promise<Message | null> => {
+  ): Promise<ChatMessage | null> => {
     const maxRetries = 3;
     
     try {
@@ -134,10 +126,10 @@ export const useMessages = (conversationId: string | null) => {
 
       // Update local state if this is for the current conversation
       if (targetConversationId === conversationId) {
-        setMessages(prev => [...prev, data]);
+        setMessages(prev => [...prev, data as ChatMessage]);
       }
 
-      return data;
+      return data as ChatMessage;
     } catch (error) {
       console.error('Error saving message:', error);
       
@@ -180,7 +172,7 @@ export const useMessages = (conversationId: string | null) => {
         },
         (payload) => {
           console.log('Real-time message received:', payload);
-          const newMessage = payload.new as Message;
+          const newMessage = payload.new as ChatMessage;
           setMessages(prev => {
             // Avoid duplicates
             if (prev.find(msg => msg.id === newMessage.id)) {
