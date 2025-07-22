@@ -123,12 +123,12 @@ const Index = () => {
           setIsTyping(false);
         }, 1500);
       } else {
-        addGuestMessage(content, 'user');
+        addGuestMessage({ content, role: 'user' });
         setIsTyping(true);
 
         setTimeout(() => {
           const aiResponse = `I understand you said: "${content}". This is a simulated response from ${selectedModel === 'openai' ? 'Enhanced Mode' : 'Lightning Mode'}. How can I help you further?`;
-          addGuestMessage(aiResponse, 'assistant');
+          addGuestMessage({ content: aiResponse, role: 'assistant' });
           setIsTyping(false);
         }, 1500);
       }
