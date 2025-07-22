@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useDeviceType } from '@/hooks/useDeviceType';
+import { supabase } from '@/integrations/supabase/client';
 import FileUploader from '@/components/FileUploader';
 import ConversionProgress from '@/components/ConversionProgress';
 
@@ -18,6 +19,7 @@ const DocumentConverter = () => {
   const [isConverting, setIsConverting] = useState(false);
   const [convertedFileUrl, setConvertedFileUrl] = useState<string | null>(null);
   const [conversionProgress, setConversionProgress] = useState(0);
+  const [convertedFileName, setConvertedFileName] = useState<string>('');
 
   const supportedFormats = {
     pdf: { label: 'PDF', icon: FileText, accepts: ['.pdf'] },
@@ -34,14 +36,14 @@ const DocumentConverter = () => {
   const getAvailableTargetFormats = (sourceFormat: string) => {
     switch (sourceFormat) {
       case 'pdf':
-        return ['docx', 'jpg', 'png', 'txt'];
+        return ['txt'];
       case 'docx':
       case 'doc':
-        return ['pdf', 'txt'];
+        return ['txt'];
       case 'jpg':
       case 'jpeg':
       case 'png':
-        return ['pdf', 'txt'];
+        return ['pdf'];
       case 'txt':
         return ['pdf', 'docx'];
       default:
@@ -54,6 +56,7 @@ const DocumentConverter = () => {
     setTargetFormat('');
     setConvertedFileUrl(null);
     setConversionProgress(0);
+    setConvertedFileName('');
   };
 
   const handleConvert = async () => {
@@ -66,7 +69,16 @@ const DocumentConverter = () => {
     setConversionProgress(0);
 
     try {
-      // Simulate conversion progress
+      // Get current session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        toast.error('Please sign in to convert documents');
+        setIsConverting(false);
+        return;
+      }
+
+      // Create progress simulation
       const progressInterval = setInterval(() => {
         setConversionProgress(prev => {
           if (prev >= 90) {
@@ -75,37 +87,69 @@ const DocumentConverter = () => {
           }
           return prev + 10;
         });
-      }, 200);
+      }, 300);
 
-      // For now, we'll simulate the conversion process
-      // In a real implementation, this would call a Supabase edge function
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Prepare form data
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('targetFormat', targetFormat);
+
+      console.log('Starting conversion:', selectedFile.name, 'to', targetFormat);
+
+      // Call the edge function
+      const { data, error } = await supabase.functions.invoke('document-converter', {
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
 
       clearInterval(progressInterval);
-      setConversionProgress(100);
 
-      // Create a mock download URL (in real implementation, this would come from the conversion service)
-      const mockUrl = URL.createObjectURL(selectedFile);
-      setConvertedFileUrl(mockUrl);
+      if (error) {
+        console.error('Conversion error:', error);
+        throw new Error(error.message || 'Conversion failed');
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Conversion failed');
+      }
+
+      setConversionProgress(100);
+      setConvertedFileUrl(data.downloadUrl);
+      setConvertedFileName(data.convertedFileName);
 
       toast.success('Conversion completed successfully!');
+      
+      console.log('Conversion successful:', data);
+
     } catch (error) {
       console.error('Conversion error:', error);
-      toast.error('Conversion failed. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Conversion failed. Please try again.');
     } finally {
       setIsConverting(false);
     }
   };
 
-  const handleDownload = () => {
-    if (convertedFileUrl && selectedFile) {
-      const link = document.createElement('a');
-      link.href = convertedFileUrl;
-      link.download = `${selectedFile.name.split('.')[0]}.${targetFormat}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast.success('File downloaded successfully!');
+  const handleDownload = async () => {
+    if (convertedFileUrl && convertedFileName) {
+      try {
+        const response = await fetch(convertedFileUrl);
+        const blob = await response.blob();
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = convertedFileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        URL.revokeObjectURL(link.href);
+        toast.success('File downloaded successfully!');
+      } catch (error) {
+        console.error('Download error:', error);
+        toast.error('Failed to download file');
+      }
     }
   };
 
@@ -233,6 +277,11 @@ const DocumentConverter = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="mb-4 p-3 bg-[#252525] rounded-lg border border-[#3e3e3e]">
+                <p className="text-white text-sm">
+                  <span className="text-gray-400">Converted file:</span> {convertedFileName}
+                </p>
+              </div>
               <Button
                 onClick={handleDownload}
                 className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
@@ -254,19 +303,24 @@ const DocumentConverter = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(supportedFormats).map(([format, info]) => (
-                <div key={format} className="p-3 bg-[#252525] rounded-lg border border-[#3e3e3e]">
-                  <div className="flex items-center gap-2 mb-2">
-                    <info.icon className="h-4 w-4 text-blue-400" />
-                    <span className="text-white font-medium">{info.label}</span>
+              {Object.entries(supportedFormats).map(([format, info]) => {
+                const targets = getAvailableTargetFormats(format);
+                if (targets.length === 0) return null;
+                
+                return (
+                  <div key={format} className="p-3 bg-[#252525] rounded-lg border border-[#3e3e3e]">
+                    <div className="flex items-center gap-2 mb-2">
+                      <info.icon className="h-4 w-4 text-blue-400" />
+                      <span className="text-white font-medium">{info.label}</span>
+                    </div>
+                    <p className="text-gray-400 text-xs">
+                      Converts to: {targets.map(f => 
+                        supportedFormats[f as keyof typeof supportedFormats]?.label
+                      ).join(', ')}
+                    </p>
                   </div>
-                  <p className="text-gray-400 text-xs">
-                    Converts to: {getAvailableTargetFormats(format).map(f => 
-                      supportedFormats[f as keyof typeof supportedFormats]?.label
-                    ).join(', ')}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>

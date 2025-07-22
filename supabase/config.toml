@@ -66,3 +66,6 @@ ip_version = "ipv4"
 
 [functions.chat-completion]
 verify_jwt = false
+
+[functions.document-converter]
+verify_jwt = true

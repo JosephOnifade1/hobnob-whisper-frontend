@@ -44,6 +44,48 @@ export type Database = {
         }
         Relationships: []
       }
+      document_conversions: {
+        Row: {
+          completed_at: string | null
+          converted_file_path: string | null
+          created_at: string
+          error_message: string | null
+          expires_at: string
+          id: string
+          original_file_path: string
+          source_format: string
+          status: string
+          target_format: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          converted_file_path?: string | null
+          created_at?: string
+          error_message?: string | null
+          expires_at?: string
+          id?: string
+          original_file_path: string
+          source_format: string
+          status?: string
+          target_format: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          converted_file_path?: string | null
+          created_at?: string
+          error_message?: string | null
+          expires_at?: string
+          id?: string
+          original_file_path?: string
+          source_format?: string
+          status?: string
+          target_format?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           attachments: Json | null
