@@ -1,3 +1,4 @@
+
 import React, { forwardRef } from 'react';
 import { Bot, User, Copy, ThumbsUp, ThumbsDown, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,7 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, r
     });
   };
 
+  // Enhanced function to format message content with professional markdown rendering
   const formatMessageContent = (content: string) => {
     // First, split by code blocks to handle them separately
     const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
@@ -86,9 +88,9 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, r
     const isCodeCopied = copiedCode === code;
 
     return (
-      <div key={key} className="my-4 code-block overflow-hidden shadow-lg">
+      <div key={key} className="my-6 code-block overflow-hidden shadow-lg">
         {/* Code block header */}
-        <div className="code-block-header flex items-center justify-between px-4 py-2">
+        <div className="code-block-header flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <div className="flex gap-1.5">
               <div className="w-3 h-3 rounded-full bg-red-400"></div>
@@ -151,7 +153,7 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, r
         formattedElements.push(
           <HeaderTag
             key={formattedElements.length}
-            className={`font-bold text-foreground mt-6 mb-3 first:mt-0 ${
+            className={`font-bold text-foreground mt-8 mb-4 first:mt-0 ${
               headerLevel === 1 ? 'text-2xl' :
               headerLevel === 2 ? 'text-xl' :
               headerLevel === 3 ? 'text-lg' : 'text-base'
@@ -201,7 +203,7 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, r
     if (!text.trim()) return null;
     
     return (
-      <p key={key} className="text-sm leading-relaxed text-foreground mb-3 last:mb-0">
+      <p key={key} className="text-sm leading-relaxed text-foreground mb-4 last:mb-0">
         {formatInlineElements(text)}
       </p>
     );
@@ -215,7 +217,7 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, r
     if (isNumbered) {
       const match = line.match(/^(\d+)\.\s+(.+)/);
       return (
-        <div key={key} className="flex items-start gap-3 mb-2">
+        <div key={key} className="flex items-start gap-3 mb-3">
           <span className="text-primary font-semibold text-sm min-w-6 mt-0.5 font-mono">
             {match?.[1]}.
           </span>
@@ -226,7 +228,7 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, r
       );
     } else {
       return (
-        <div key={key} className="flex items-start gap-3 mb-2">
+        <div key={key} className="flex items-start gap-3 mb-3">
           <span className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></span>
           <span className="text-sm leading-relaxed text-foreground flex-1">
             {formatInlineElements(content)}
@@ -328,23 +330,23 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, r
   return (
     <div 
       ref={ref}
-      className={`message-group flex w-full py-4 lg:py-6 px-4 lg:px-6 transition-all duration-300 hover:bg-muted/20 ${
+      className={`message-group flex w-full py-8 px-4 lg:px-6 transition-all duration-300 hover:bg-muted/20 ${
         isAssistant ? 'bg-muted/30' : 'bg-background'
       }`}
     >
-      <div className="max-w-4xl mx-auto w-full flex gap-4">
+      <div className="max-w-4xl mx-auto w-full flex gap-6">
         {/* Enhanced Avatar */}
         <div className={`
-          flex-shrink-0 w-8 h-8 lg:w-10 lg:h-10 rounded-xl flex items-center justify-center transition-all duration-200 shadow-lg
+          flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 shadow-lg
           ${isAssistant 
             ? 'bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 text-white' 
             : 'bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 text-white'
           }
         `}>
           {isAssistant ? (
-            <Bot className="h-4 w-4 lg:h-5 lg:w-5" />
+            <Bot className="h-5 w-5" />
           ) : (
-            <User className="h-4 w-4 lg:h-5 lg:w-5" />
+            <User className="h-5 w-5" />
           )}
         </div>
 
@@ -358,7 +360,7 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, r
           </div>
 
           {/* Timestamp and actions */}
-          <div className="flex items-center gap-3 mt-4 opacity-0 group-hover:opacity-100 transition-all duration-300">
+          <div className="flex items-center gap-3 mt-6 opacity-0 group-hover:opacity-100 transition-all duration-300">
             <span className="text-xs text-muted-foreground/70 font-medium">
               {formatTime(message.timestamp)}
             </span>
@@ -369,22 +371,22 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, r
                   variant="ghost"
                   size="sm"
                   onClick={() => copyToClipboard(message.content)}
-                  className="h-6 px-2 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all duration-200 rounded-lg"
+                  className="h-7 px-3 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all duration-200 rounded-lg"
                 >
-                  <Copy className="h-3 w-3 mr-1" />
+                  <Copy className="h-3 w-3 mr-1.5" />
                   <span className="text-xs">Copy</span>
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-2 text-muted-foreground hover:text-green-400 hover:bg-accent/50 transition-all duration-200 rounded-lg"
+                  className="h-7 px-3 text-muted-foreground hover:text-green-400 hover:bg-accent/50 transition-all duration-200 rounded-lg"
                 >
                   <ThumbsUp className="h-3 w-3" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-2 text-muted-foreground hover:text-red-400 hover:bg-accent/50 transition-all duration-200 rounded-lg"
+                  className="h-7 px-3 text-muted-foreground hover:text-red-400 hover:bg-accent/50 transition-all duration-200 rounded-lg"
                 >
                   <ThumbsDown className="h-3 w-3" />
                 </Button>

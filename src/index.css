@@ -49,19 +49,10 @@
     --primary-gradient: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(262 83% 58%) 50%, hsl(270 91% 65%) 100%);
     --accent-gradient: linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--muted)) 100%);
     
-    /* Chat Layout Variables - Optimized for better spacing */
-    --chat-input-height: 72px;
-    --mobile-nav-height: 72px;
+    /* Chat Layout Variables */
+    --chat-input-height: 80px;
+    --mobile-nav-height: 80px;
     --sidebar-width: 256px;
-
-    /* Balanced Spacing Scale */
-    --spacing-xs: 0.25rem;  /* 4px */
-    --spacing-sm: 0.5rem;   /* 8px */
-    --spacing-md: 0.75rem;  /* 12px */
-    --spacing-lg: 1rem;     /* 16px */
-    --spacing-xl: 1.5rem;   /* 24px */
-    --spacing-2xl: 2rem;    /* 32px */
-    --spacing-3xl: 3rem;    /* 48px */
   }
  
   .dark {
@@ -116,14 +107,14 @@ body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  line-height: 1.5;
+  line-height: 1.6;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   font-variant-numeric: oldstyle-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Improved typography with balanced spacing */
+/* Improved typography */
 h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   line-height: 1.25;
@@ -143,7 +134,7 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--primary-gradient);
 }
 
-/* Glass morphism effects with optimized spacing */
+/* Glass morphism effects */
 .glass-card {
   background: hsla(var(--card), 0.8);
   backdrop-filter: blur(12px);
@@ -165,10 +156,10 @@ h1, h2, h3, h4, h5, h6 {
     0 10px 15px -3px hsla(var(--foreground), 0.1),
     0 4px 6px -2px hsla(var(--foreground), 0.05),
     0 0 0 1px hsla(var(--primary), 0.1);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
-/* Enhanced button styles with balanced proportions */
+/* Enhanced button styles */
 .btn-primary {
   background: var(--primary-gradient);
   border: none;
@@ -200,54 +191,54 @@ h1, h2, h3, h4, h5, h6 {
   transform: translateY(-1px);
 }
 
-/* Touch and interaction improvements with optimized tap targets */
+/* Touch and interaction improvements */
 .touch-target {
   min-height: 44px;
   min-width: 44px;
 }
 
-/* Responsive container with balanced padding */
+/* Responsive container with proper padding */
 .container-responsive {
-  @apply px-3 mx-auto;
+  @apply px-4 mx-auto;
   max-width: 100%;
 }
 
 @media (min-width: 640px) {
   .container-responsive {
-    @apply px-4;
+    @apply px-6;
     max-width: 640px;
   }
 }
 
 @media (min-width: 768px) {
   .container-responsive {
-    @apply px-6;
+    @apply px-8;
     max-width: 768px;
   }
 }
 
 @media (min-width: 1024px) {
   .container-responsive {
-    @apply px-8;
+    @apply px-12;
     max-width: 1024px;
   }
 }
 
 @media (min-width: 1280px) {
   .container-responsive {
-    @apply px-12;
+    @apply px-16;
     max-width: 1280px;
   }
 }
 
-/* Chat-specific layout improvements with optimized spacing */
+/* Chat-specific layout improvements */
 .chat-container {
-  padding-bottom: calc(var(--chat-input-height) + env(safe-area-inset-bottom) + 1.5rem);
+  padding-bottom: calc(var(--chat-input-height) + env(safe-area-inset-bottom) + 2rem);
 }
 
 @media (max-width: 768px) {
   .chat-container {
-    padding-bottom: calc(var(--chat-input-height) + var(--mobile-nav-height) + env(safe-area-inset-bottom) + 1.5rem);
+    padding-bottom: calc(var(--chat-input-height) + var(--mobile-nav-height) + env(safe-area-inset-bottom) + 2rem);
   }
 }
 
@@ -283,11 +274,11 @@ h1, h2, h3, h4, h5, h6 {
   outline-offset: 2px;
 }
 
-/* Enhanced animations with balanced timing */
+/* Enhanced animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -298,7 +289,7 @@ h1, h2, h3, h4, h5, h6 {
 @keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateX(-16px);
+    transform: translateX(-20px);
   }
   to {
     opacity: 1;
@@ -314,7 +305,7 @@ h1, h2, h3, h4, h5, h6 {
   animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Responsive typography with balanced scaling */
+/* Responsive typography */
 @media (max-width: 640px) {
   html {
     font-size: 14px;
@@ -340,7 +331,7 @@ h1, h2, h3, h4, h5, h6 {
   backdrop-filter: blur(8px);
 }
 
-/* Better visual hierarchy with balanced spacing */
+/* Better visual hierarchy */
 .section-divider {
   border-top: 1px solid hsla(var(--border), 0.5);
   background: linear-gradient(
@@ -352,7 +343,7 @@ h1, h2, h3, h4, h5, h6 {
   height: 1px;
 }
 
-/* Enhanced code and pre styling with improved spacing */
+/* Enhanced code and pre styling */
 code {
   background: hsla(var(--muted), 0.5);
   padding: 0.125rem 0.25rem;
@@ -401,20 +392,20 @@ pre {
   color: hsl(var(--foreground));
 }
 
-/* Better scrollbar styling with refined proportions */
+/* Better scrollbar styling */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
   background: hsla(var(--muted), 0.3);
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
   background: hsla(var(--muted-foreground), 0.3);
-  border-radius: 3px;
+  border-radius: 4px;
   transition: background 0.2s ease;
 }
 
@@ -426,17 +417,4 @@ pre {
 * {
   scrollbar-width: thin;
   scrollbar-color: hsla(var(--muted-foreground), 0.3) hsla(var(--muted), 0.3);
-}
-
-/* Balanced spacing utility classes */
-.space-balanced > * + * {
-  margin-top: var(--spacing-lg);
-}
-
-.space-compact > * + * {
-  margin-top: var(--spacing-sm);
-}
-
-.space-comfortable > * + * {
-  margin-top: var(--spacing-xl);
 }
