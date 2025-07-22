@@ -1,663 +1,291 @@
-
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Menu, RefreshCw, Sparkles, Zap, Bot } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { TouchButton } from '@/components/ui/touch-button';
-import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { useConversations } from '@/hooks/useConversations';
-import { useDeviceType } from '@/hooks/useDeviceType';
-import ResponsiveChatSidebar from '@/components/ResponsiveChatSidebar';
-import MobileNavigation from '@/components/MobileNavigation';
+import React, { useState, useRef, useEffect } from 'react';
+import { Sparkles, MessageCircle, Plus, FileText, Video, Bot, Zap, RefreshCw } from 'lucide-react';
 import ChatMessage from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
+import ResponsiveChatSidebar from '@/components/ResponsiveChatSidebar';
 import TypingIndicator from '@/components/TypingIndicator';
-import ThemeToggle from '@/components/ThemeToggle';
-import GuestMode from '@/components/GuestMode';
 import ModelSelector from '@/components/ModelSelector';
-import { ChatService, type ChatMessage as ServiceChatMessage } from '@/services/chatService';
-import { AIService, AIProvider } from '@/services/aiService';
+import ThemeToggle from '@/components/ThemeToggle';
+import QuickActions from '@/components/QuickActions';
+import MobileNavigation from '@/components/MobileNavigation';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { useGuestChat } from '@/contexts/GuestChatContext';
+import { useDeviceType } from '@/hooks/useDeviceType';
+import { useConversations } from '@/hooks/useConversations';
+import { useMessages } from '@/hooks/useMessages';
+import { toast } from 'sonner';
 
 interface Message {
   id: string;
   content: string;
   role: 'user' | 'assistant';
   timestamp: Date;
-  attachments?: any[];
-  isError?: boolean;
-  canRetry?: boolean;
-  provider?: AIProvider;
 }
 
 const Index = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user, loading: authLoading, initializing } = useAuth();
-  const { isMobile, isTablet } = useDeviceType();
+  const { user } = useAuth();
+  const { messages: guestMessages, addMessage: addGuestMessage } = useGuestChat();
+  const { isMobile } = useDeviceType();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('gpt-4o-mini');
+
   const {
+    conversations,
+    activeConversationId,
+    setActiveConversationId,
     createConversation,
-    createConversationWithMessage,
-    getCurrentConversationId,
-    setCurrentConversationId,
-    conversations
+    deleteConversation,
+    updateConversationTitle
   } = useConversations();
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-  const [isTyping, setIsTyping] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [conversationHistory, setConversationHistory] = useState<ServiceChatMessage[]>([]);
-  const [lastUserMessage, setLastUserMessage] = useState<string>('');
-  const [isRestoringState, setIsRestoringState] = useState(false);
-  const [isSendingMessage, setIsSendingMessage] = useState(false);
-  const [showGuestMode, setShowGuestMode] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<AIProvider>(AIService.getDefaultProvider());
-  const [userScrolledUp, setUserScrolledUp] = useState(false);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-  const lastMessageRef = useRef<HTMLDivElement>(null);
-  const scrollObserverRef = useRef<IntersectionObserver | null>(null);
+  const {
+    messages: dbMessages,
+    isLoading: messagesLoading,
+    addMessage,
+    clearMessages
+  } = useMessages(activeConversationId);
 
-  const scrollToBottom = useCallback((force = false) => {
-    if (!force && userScrolledUp) return;
-    
-    if (lastMessageRef.current && chatContainerRef.current) {
-      // Calculate the proper scroll position accounting for fixed elements
-      const container = chatContainerRef.current;
-      const lastMessage = lastMessageRef.current;
-      
-      // Get the container's current scroll info
-      const containerRect = container.getBoundingClientRect();
-      const messageRect = lastMessage.getBoundingClientRect();
-      
-      // Calculate if we need to scroll
-      const isMessageVisible = messageRect.bottom <= containerRect.bottom - 40; // 40px buffer
-      
-      if (!isMessageVisible || force) {
+  const messages = user ? dbMessages : guestMessages;
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSendMessage = async (content: string, attachments?: any[]) => {
+    if (!content.trim()) return;
+
+    try {
+      if (user) {
+        let conversationId = activeConversationId;
+        
+        if (!conversationId) {
+          conversationId = await createConversation(content.slice(0, 50) + '...');
+          setActiveConversationId(conversationId);
+        }
+
+        await addMessage(content, 'user', conversationId);
+        setIsTyping(true);
+
+        // Simulate AI response
+        setTimeout(async () => {
+          const aiResponse = `I understand you said: "${content}". This is a simulated response from ${selectedModel}. How can I help you further?`;
+          await addMessage(aiResponse, 'assistant', conversationId);
+          setIsTyping(false);
+        }, 1500);
+      } else {
+        addGuestMessage(content, 'user');
+        setIsTyping(true);
+
         setTimeout(() => {
-          lastMessage.scrollIntoView({
-            behavior: 'smooth',
-            block: 'end',
-            inline: 'nearest'
-          });
-        }, 50);
-      }
-    }
-  }, [userScrolledUp]);
-
-  // Set up scroll position monitoring
-  useEffect(() => {
-    const container = chatContainerRef.current;
-    if (!container) return;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-      
-      // Consider user has scrolled up if they're more than 100px from bottom
-      setUserScrolledUp(distanceFromBottom > 100);
-    };
-
-    container.addEventListener('scroll', handleScroll, { passive: true });
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Set up intersection observer for auto-scroll detection
-  useEffect(() => {
-    if (!lastMessageRef.current || !chatContainerRef.current) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (!entry.isIntersecting && !userScrolledUp) {
-          setUserScrolledUp(true);
-        }
-      },
-      {
-        root: chatContainerRef.current,
-        rootMargin: '0px 0px -100px 0px', // 100px margin from bottom
-        threshold: 0.1
-      }
-    );
-
-    observer.observe(lastMessageRef.current);
-    scrollObserverRef.current = observer;
-
-    return () => {
-      if (scrollObserverRef.current) {
-        scrollObserverRef.current.disconnect();
-      }
-    };
-  }, [messages.length, userScrolledUp]);
-
-  // Auto-scroll when messages change or typing status changes
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      scrollToBottom();
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [messages, isTyping, scrollToBottom]);
-
-  // Force scroll to bottom when user sends a message
-  const forceScrollToBottom = useCallback(() => {
-    setUserScrolledUp(false);
-    scrollToBottom(true);
-  }, [scrollToBottom]);
-
-  const handleProviderChange = (provider: AIProvider) => {
-    setSelectedProvider(provider);
-    AIService.setDefaultProvider(provider);
-    const capabilityName = provider === 'openai' ? 'Enhanced Mode' : 'Lightning Mode';
-    toast({
-      title: "AI Capability Changed",
-      description: `Switched to ${capabilityName} for optimized performance`
-    });
-  };
-
-  useEffect(() => {
-    if (user && !initializing && conversations.length > 0 && !isRestoringState && !currentChatId) {
-      const savedConversationId = getCurrentConversationId();
-      if (savedConversationId && conversations.find(conv => conv.id === savedConversationId)) {
-        console.log('Restoring conversation state:', savedConversationId);
-        setIsRestoringState(true);
-        handleChatSelect(savedConversationId).finally(() => {
-          setIsRestoringState(false);
-        });
-      } else if (conversations.length > 0) {
-        const mostRecent = conversations[0];
-        console.log('Selecting most recent conversation:', mostRecent.id);
-        setIsRestoringState(true);
-        handleChatSelect(mostRecent.id).finally(() => {
-          setIsRestoringState(false);
-        });
-      }
-    }
-  }, [user, initializing, conversations, currentChatId, isRestoringState]);
-
-  const createNewConversation = async () => {
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to start chatting.",
-        variant: "destructive"
-      });
-      return;
-    }
-    try {
-      const conversation = await createConversation();
-      if (conversation) {
-        setCurrentChatId(conversation.id);
-        setCurrentConversationId(conversation.id);
-        setMessages([]);
-        setConversationHistory([]);
-        console.log('Created new conversation:', conversation.id);
-      }
-    } catch (error) {
-      console.error('Error creating conversation:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create new conversation. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const sendMessageToAI = async (content: string, isRetry: boolean = false) => {
-    if (!user || !currentChatId || isSendingMessage) {
-      if (!user) {
-        toast({
-          title: "Authentication Required",
-          description: "Please sign in to send messages.",
-          variant: "destructive"
-        });
-      }
-      return;
-    }
-    setIsSendingMessage(true);
-    setIsTyping(true);
-    try {
-      if (!isRetry) {
-        await ChatService.saveMessage(currentChatId, 'user', content);
-      }
-      const chatMessages: ServiceChatMessage[] = [...conversationHistory, {
-        role: 'user',
-        content
-      }];
-      console.log('Sending to Hobnob AI:', {
-        messageCount: chatMessages.length,
-        currentChatId,
-        isRetry,
-        provider: selectedProvider
-      });
-      const response = await AIService.sendMessage(chatMessages, {
-        conversationId: currentChatId,
-        userId: user.id,
-        provider: selectedProvider
-      });
-      await ChatService.saveMessage(currentChatId, 'assistant', response.message);
-      if (conversationHistory.length === 0 && !isRetry) {
-        const title = await ChatService.generateTitle([{
-          role: 'user',
-          content
-        }]);
-        await ChatService.updateConversationTitle(currentChatId, title);
-        console.log('Updated conversation title to:', title);
-      }
-      const aiMessage: Message = {
-        id: `ai-${Date.now()}`,
-        content: response.message,
-        role: 'assistant',
-        timestamp: new Date(),
-        provider: response.provider
-      };
-      setMessages(prev => {
-        if (isRetry) {
-          return [...prev.slice(0, -1), aiMessage];
-        }
-        return [...prev, aiMessage];
-      });
-      setConversationHistory(prev => {
-        if (isRetry) {
-          return [...prev, {
-            role: 'assistant',
-            content: response.message
-          }];
-        }
-        return [...prev, {
-          role: 'user',
-          content
-        }, {
-          role: 'assistant',
-          content: response.message
-        }];
-      });
-      console.log('Hobnob AI response received successfully:', {
-        length: response.message.length,
-        usage: response.usage,
-        provider: response.provider
-      });
-      if (isRetry) {
-        const capabilityName = response.provider === 'openai' ? 'Enhanced Mode' : 'Lightning Mode';
-        toast({
-          title: "Success!",
-          description: `Message sent successfully using ${capabilityName}.`
-        });
+          const aiResponse = `I understand you said: "${content}". This is a simulated response from ${selectedModel}. How can I help you further?`;
+          addGuestMessage(aiResponse, 'assistant');
+          setIsTyping(false);
+        }, 1500);
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      let errorMessage = "I apologize, but I encountered an error. Please try again.";
-      let canRetry = true;
-      if (error instanceof Error) {
-        if (error.message.includes('rate limit') || error.message.includes('429')) {
-          errorMessage = "I'm receiving too many requests right now. Please wait a moment and try again.";
-        } else if (error.message.includes('quota exceeded') || error.message.includes('402')) {
-          errorMessage = "The AI service quota has been exceeded. Please check your API billing or try again later.";
-          canRetry = false;
-        } else if (error.message.includes('authentication') || error.message.includes('401')) {
-          errorMessage = "There's an authentication issue with the AI service. Please contact support.";
-          canRetry = false;
-        } else if (error.message.includes('temporarily unavailable') || error.message.includes('503')) {
-          errorMessage = "The AI service is temporarily unavailable. Please try again in a few minutes.";
-        } else {
-          errorMessage = `I encountered an error: ${error.message}. Please try again.`;
-        }
-      }
-      const errorMessage_obj: Message = {
-        id: `error-${Date.now()}`,
-        content: errorMessage,
-        role: 'assistant',
-        timestamp: new Date(),
-        isError: true,
-        canRetry: canRetry
-      };
-      setMessages(prev => {
-        if (isRetry) {
-          return [...prev.slice(0, -1), errorMessage_obj];
-        }
-        return [...prev, errorMessage_obj];
-      });
-      toast({
-        title: "Error",
-        description: canRetry ? "Failed to get AI response. You can try again." : "Service unavailable. Please try again later.",
-        variant: "destructive"
-      });
-    } finally {
+      toast.error('Failed to send message. Please try again.');
       setIsTyping(false);
-      setIsSendingMessage(false);
     }
   };
 
-  const handleSendMessage = async (content: string, attachments?: any[]) => {
-    if (isSendingMessage) return;
-    
-    // Force scroll to bottom when user sends a message
-    forceScrollToBottom();
-    
-    if (!currentChatId) {
-      const conversation = await createConversationWithMessage(content);
-      if (conversation) {
-        setCurrentChatId(conversation.id);
-        setCurrentConversationId(conversation.id);
-        const userMessage: Message = {
-          id: `user-${Date.now()}`,
-          content,
-          role: 'user',
-          timestamp: new Date(),
-          attachments
-        };
-        setMessages([userMessage]);
-        setLastUserMessage(content);
-        await sendMessageToAI(content);
-      }
-      return;
-    }
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      content,
-      role: 'user',
-      timestamp: new Date(),
-      attachments
-    };
-    setMessages(prev => [...prev, userMessage]);
-    setLastUserMessage(content);
-    await sendMessageToAI(content);
-  };
-
-  const handleRetryMessage = async () => {
-    if (lastUserMessage && !isSendingMessage) {
-      await sendMessageToAI(lastUserMessage, true);
-    }
-  };
-
-  const handleNewChat = () => {
-    createNewConversation();
-    setSidebarOpen(false);
-  };
-
-  const handleChatSelect = async (chatId: string) => {
-    if (chatId === currentChatId) return;
+  const handleNewConversation = async () => {
     try {
-      setCurrentChatId(chatId);
-      setCurrentConversationId(chatId);
-      const dbMessages = await ChatService.getConversationMessages(chatId);
-      const uiMessages: Message[] = dbMessages.map(msg => ({
-        id: msg.id,
-        content: msg.content,
-        role: msg.role as 'user' | 'assistant',
-        timestamp: new Date(msg.created_at)
-      }));
-      setMessages(uiMessages);
-      const history: ServiceChatMessage[] = dbMessages.map(msg => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content
-      }));
-      setConversationHistory(history);
-      setSidebarOpen(false);
-      console.log('Loaded conversation:', {
-        chatId,
-        messageCount: uiMessages.length
-      });
+      if (user) {
+        const conversationId = await createConversation('New conversation');
+        setActiveConversationId(conversationId);
+      } else {
+        clearMessages();
+      }
     } catch (error) {
-      console.error('Error loading conversation:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load conversation.",
-        variant: "destructive"
-      });
+      console.error('Error creating conversation:', error);
+      toast.error('Failed to create new conversation.');
     }
   };
 
-  if (initializing) {
-    return (
-      <div className="flex h-screen bg-background text-foreground items-center justify-center">
-        <div className="text-center space-y-6">
-          <div className="relative">
-            <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary/30 border-t-primary mx-auto"></div>
-            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary/20 to-transparent animate-pulse"></div>
-          </div>
-          <div className="space-y-2">
-            <p className="text-lg font-medium">Initializing Hobnob AI</p>
-            <p className="text-muted-foreground text-sm">Setting up your intelligent assistant...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleDeleteConversation = async (conversationId: string) => {
+    try {
+      await deleteConversation(conversationId);
+      if (conversationId === activeConversationId) {
+        setActiveConversationId(null);
+      }
+      toast.success('Conversation deleted');
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      toast.error('Failed to delete conversation.');
+    }
+  };
 
-  if (showGuestMode && !user) {
-    return <GuestMode />;
-  }
-
-  if (!user && !authLoading) {
-    return (
-      <div className="flex h-screen bg-background text-foreground items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-purple-500/5"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,_hsl(var(--primary))_0%,_transparent_50%)] opacity-10"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,_hsl(var(--purple-500))_0%,_transparent_50%)] opacity-10"></div>
-        
-        <div className="relative z-10 text-center space-y-8 max-w-lg p-8 mx-4">
-          <div className="space-y-4">
-            <div className="relative inline-block">
-              <div className="w-20 h-20 bg-gradient-to-br from-primary via-purple-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-xl mx-auto">
-                <Sparkles className="h-10 w-10 text-white" />
-              </div>
-              <div className="absolute -inset-2 bg-gradient-to-br from-primary/20 to-purple-600/20 rounded-3xl blur-xl"></div>
-            </div>
-            <h1 className="text-4xl font-bold">
-              <span className="text-gradient">Hobnob AI</span>
-            </h1>
-            <p className="text-muted-foreground text-lg leading-relaxed text-balance">
-              Your intelligent AI assistant with adaptive capabilities. 
-              Experience the future of conversational AI.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="glass-card p-4 text-left">
-              <Zap className="h-5 w-5 text-primary mb-2" />
-              <div className="font-medium">Multiple AI Modes</div>
-              <div className="text-muted-foreground text-xs">Enhanced & Lightning capabilities</div>
-            </div>
-            <div className="glass-card p-4 text-left">
-              <Bot className="h-5 w-5 text-primary mb-2" />
-              <div className="font-medium">Advanced Features</div>
-              <div className="text-muted-foreground text-xs">File uploads & voice input</div>
-            </div>
-          </div>
-          
-          <div className="space-y-4">
-            <TouchButton 
-              onClick={() => navigate('/auth')} 
-              className="w-full btn-primary py-4 text-base font-medium" 
-              size="lg"
-              haptic
-            >
-              <Sparkles className="h-5 w-5 mr-2" />
-              Get Started
-            </TouchButton>
-            
-            <div className="flex items-center gap-4">
-              <div className="flex-1 border-t border-border/50"></div>
-              <span className="text-sm text-muted-foreground font-medium">or</span>
-              <div className="flex-1 border-t border-border/50"></div>
-            </div>
-            
-            <TouchButton 
-              onClick={() => setShowGuestMode(true)} 
-              variant="outline" 
-              className="w-full btn-secondary py-4 text-base font-medium" 
-              size="lg"
-              haptic
-            >
-              Continue as Guest
-            </TouchButton>
-            
-            <p className="text-xs text-muted-foreground/70">
-              Guest mode: Limited features, no conversation history or file uploads.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const quickActionItems = [
+    {
+      icon: FileText,
+      title: 'Summarize Document',
+      description: 'Upload and get AI insights',
+      color: 'from-blue-500 to-cyan-500',
+      action: () => console.log('Document summary')
+    },
+    {
+      icon: Video,
+      title: 'Generate Video',
+      description: 'Create AI-powered videos',
+      color: 'from-purple-500 to-pink-500',
+      action: () => console.log('Video generation')
+    },
+    {
+      icon: Bot,
+      title: 'AI Assistant',
+      description: 'Advanced problem solving',
+      color: 'from-green-500 to-emerald-500',
+      action: () => console.log('AI Assistant')
+    },
+    {
+      icon: Zap,
+      title: 'Quick Analysis',
+      description: 'Instant data insights',
+      color: 'from-orange-500 to-red-500',
+      action: () => console.log('Quick analysis')
+    }
+  ];
 
   return (
-    <div className="flex h-screen bg-background text-foreground">
-      <ResponsiveChatSidebar 
-        isOpen={sidebarOpen} 
-        onToggle={() => setSidebarOpen(!sidebarOpen)} 
-        currentChatId={currentChatId || ''} 
-        onChatSelect={handleChatSelect} 
-        onNewChat={handleNewChat} 
+    <div className="flex h-screen bg-background">
+      {/* Sidebar */}
+      <ResponsiveChatSidebar
+        conversations={conversations}
+        activeConversationId={activeConversationId}
+        onSelectConversation={setActiveConversationId}
+        onNewConversation={handleNewConversation}
+        onDeleteConversation={handleDeleteConversation}
+        onUpdateTitle={updateConversationTitle}
       />
 
-      <div className={`flex-1 flex flex-col ${!isMobile && !isTablet ? 'lg:ml-64' : ''}`}>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col lg:ml-64">
         {/* Header */}
-        <div className="glass-card border-b border-border/50 backdrop-blur-xl">
-          <div className={`p-4 ${isMobile ? 'px-4 py-3' : 'lg:p-6'}`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <TouchButton 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setSidebarOpen(true)} 
-                  className={`${isMobile || isTablet ? 'block' : 'lg:hidden'} text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-xl p-3`}
-                  haptic
-                >
-                  <Menu className="h-5 w-5" />
-                </TouchButton>
-                <div className="flex items-center gap-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center">
-                      <Sparkles className="h-4 w-4 text-white" />
-                    </div>
-                    <h1 className={`font-bold ${isMobile ? 'text-lg' : 'text-xl'}`}>
-                      <span className="text-gradient">Hobnob AI</span>
-                      {user && !isMobile && <span className="text-sm font-normal text-muted-foreground ml-2">• {user.email}</span>}
-                    </h1>
-                  </div>
-                  {!isMobile && (
-                    <TouchButton 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => navigate('/tools')} 
-                      className="text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-xl px-4 py-2"
-                      haptic
-                    >
-                      Tools Dashboard
-                    </TouchButton>
-                  )}
+        <header className="border-b border-border/50 bg-background/95 backdrop-blur-xl sticky top-0 z-10">
+          <div className="flex items-center justify-between px-4 lg:px-6 py-3">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg">
+                  <Sparkles className="h-4 w-4 text-white" />
                 </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <ModelSelector 
-                  selectedProvider={selectedProvider} 
-                  onProviderChange={handleProviderChange} 
-                  disabled={isTyping || isSendingMessage} 
-                  compact={isMobile}
-                />
-                <ThemeToggle />
+                <h1 className="text-lg font-bold text-foreground">Hobnob AI</h1>
               </div>
             </div>
+            
+            <div className="flex items-center gap-2">
+              <ModelSelector
+                selectedModel={selectedModel}
+                onModelChange={setSelectedModel}
+              />
+              <ThemeToggle />
+            </div>
           </div>
-        </div>
+        </header>
 
-        {/* Chat Messages Container */}
-        <div 
-          ref={chatContainerRef} 
-          className="flex-1 overflow-y-auto scroll-smooth-mobile chat-container"
-        >
-          <div className="space-y-0 min-h-full">
-            {messages.length === 0 && !isTyping && !isRestoringState && (
-              <div className="flex items-center justify-center h-full text-center p-8">
-                <div className="space-y-6 max-w-md">
-                  <div className="relative">
-                    <div className="w-16 h-16 bg-gradient-to-br from-primary via-purple-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-xl mx-auto">
-                      <Sparkles className="h-8 w-8 text-white" />
+        {/* Chat Area */}
+        <div className="flex-1 overflow-y-auto chat-container scroll-smooth-mobile">
+          {messages.length > 0 ? (
+            <div className="space-y-0">
+              {messages.map((message, index) => (
+                <ChatMessage
+                  key={message.id}
+                  message={message}
+                  ref={index === messages.length - 1 ? messagesEndRef : undefined}
+                />
+              ))}
+              {isTyping && (
+                <div className="py-4 lg:py-6 px-4 lg:px-6 bg-muted/30">
+                  <div className="max-w-4xl mx-auto flex gap-4">
+                    <div className="flex-shrink-0 w-8 h-8 lg:w-10 lg:h-10 rounded-xl bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 text-white flex items-center justify-center shadow-lg">
+                      <Bot className="h-4 w-4 lg:h-5 lg:w-5" />
                     </div>
-                    <div className="absolute -inset-2 bg-gradient-to-br from-primary/20 to-purple-600/20 rounded-3xl blur-xl"></div>
+                    <div className="flex-1">
+                      <TypingIndicator />
+                    </div>
                   </div>
-                  <div className="space-y-3">
-                    <h2 className="text-2xl font-bold text-gradient">Start a conversation</h2>
-                    <p className="text-muted-foreground leading-relaxed">
-                      Ask me anything! I'm Hobnob AI, your intelligent assistant ready to help with any task.
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center p-4 lg:p-8">
+              <div className="text-center max-w-2xl mx-auto space-y-8">
+                {/* Welcome Section */}
+                <div className="space-y-4">
+                  <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gradient-primary rounded-2xl flex items-center justify-center mx-auto shadow-xl">
+                    <Sparkles className="h-8 w-8 lg:h-10 lg:w-10 text-white" />
+                  </div>
+                  <div className="space-y-2">
+                    <h2 className="text-2xl lg:text-3xl font-bold text-gradient">
+                      Welcome to Hobnob AI
+                    </h2>
+                    <p className="text-muted-foreground text-base lg:text-lg max-w-lg mx-auto leading-relaxed">
+                      Your intelligent assistant for creative solutions, analysis, and productivity
                     </p>
                   </div>
-                  {!isMobile && (
-                    <ModelSelector 
-                      selectedProvider={selectedProvider} 
-                      onProviderChange={handleProviderChange} 
-                      disabled={isTyping || isSendingMessage} 
-                    />
-                  )}
                 </div>
-              </div>
-            )}
-            
-            {isRestoringState && (
-              <div className="flex items-center justify-center h-full text-center p-8">
+
+                {/* Quick Actions */}
                 <div className="space-y-4">
-                  <div className="relative">
-                    <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary/30 border-t-primary mx-auto"></div>
-                    <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary/20 to-transparent animate-pulse"></div>
+                  <h3 className="text-lg font-semibold text-foreground">Get started with</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {quickActionItems.map((item, index) => (
+                      <Card 
+                        key={index}
+                        className="glass-card glass-card-hover p-4 cursor-pointer transition-all duration-300"
+                        onClick={item.action}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 bg-gradient-to-br ${item.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                            <item.icon className="h-5 w-5 text-white" />
+                          </div>
+                          <div className="text-left">
+                            <h4 className="font-medium text-foreground text-sm">{item.title}</h4>
+                            <p className="text-muted-foreground text-xs">{item.description}</p>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
                   </div>
-                  <p className="text-muted-foreground font-medium">Restoring conversation...</p>
+                </div>
+
+                {/* Start Conversation */}
+                <div className="space-y-3">
+                  <Button
+                    onClick={handleNewConversation}
+                    className="btn-primary px-6 py-3 text-base font-medium"
+                  >
+                    <MessageCircle className="h-5 w-5 mr-2" />
+                    Start a conversation
+                  </Button>
+                  <p className="text-xs text-muted-foreground/70">
+                    Ask anything or try one of the quick actions above
+                  </p>
                 </div>
               </div>
-            )}
-            
-            {messages.map((message, index) => (
-              <div key={message.id} className="group">
-                <ChatMessage 
-                  message={message} 
-                  ref={index === messages.length - 1 ? lastMessageRef : null} 
-                />
-                {message.isError && message.canRetry && index === messages.length - 1 && (
-                  <div className="flex justify-center py-6">
-                    <TouchButton 
-                      onClick={handleRetryMessage} 
-                      variant="outline" 
-                      size="sm" 
-                      className="gap-2 btn-secondary hover:scale-105 transition-transform" 
-                      disabled={isTyping || isSendingMessage}
-                      haptic
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      Try Again
-                    </TouchButton>
-                  </div>
-                )}
-              </div>
-            ))}
-            
-            {isTyping && (
-              <div ref={lastMessageRef}>
-                <TypingIndicator />
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
-        {/* Scroll to Bottom Button */}
-        {userScrolledUp && (
-          <button
-            onClick={forceScrollToBottom}
-            className="fixed bottom-32 right-6 z-40 w-12 h-12 bg-primary text-primary-foreground rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center hover:scale-105"
-            style={{ bottom: `calc(${isMobile ? '160px' : '140px'} + env(safe-area-inset-bottom))` }}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-            </svg>
-          </button>
-        )}
-
-        <ChatInput 
-          onSendMessage={handleSendMessage} 
-          disabled={isTyping || !user || isRestoringState || isSendingMessage} 
+        {/* Chat Input */}
+        <ChatInput
+          onSendMessage={handleSendMessage}
+          disabled={isTyping}
         />
       </div>
 
+      {/* Mobile Navigation */}
       {isMobile && <MobileNavigation />}
+
+      {/* Quick Actions Component */}
+      <QuickActions />
     </div>
   );
 };
