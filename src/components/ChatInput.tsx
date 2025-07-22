@@ -195,7 +195,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                   </div>}
                 {attachment.type === 'audio' && <div className="flex items-center gap-3 text-foreground">
                     <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-md flex items-center justify-center">
-                      <Mic className="h-5 w-5 text-white" />
+                      <Mic className="h-5 w-5 text-white px-[200px] mx-[10px]" />
                     </div>
                     <span className="text-sm font-medium">Audio Recording</span>
                   </div>}
