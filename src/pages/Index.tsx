@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Menu, RefreshCw } from 'lucide-react';
+import { Menu, RefreshCw, Sparkles, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -14,6 +14,7 @@ import GuestMode from '@/components/GuestMode';
 import ModelSelector from '@/components/ModelSelector';
 import { ChatService, type ChatMessage as ServiceChatMessage } from '@/services/chatService';
 import { AIService, AIProvider } from '@/services/aiService';
+
 interface Message {
   id: string;
   content: string;
@@ -24,16 +25,11 @@ interface Message {
   canRetry?: boolean;
   provider?: AIProvider;
 }
+
 const Index = () => {
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
-  const {
-    user,
-    loading: authLoading,
-    initializing
-  } = useAuth();
+  const { toast } = useToast();
+  const { user, loading: authLoading, initializing } = useAuth();
   const {
     createConversation,
     createConversationWithMessage,
@@ -41,6 +37,7 @@ const Index = () => {
     setCurrentConversationId,
     conversations
   } = useConversations();
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
@@ -80,7 +77,7 @@ const Index = () => {
     AIService.setDefaultProvider(provider);
     toast({
       title: "AI Model Changed",
-      description: `Switched to ${provider === 'openai' ? 'OpenAI GPT-4.1' : 'DeepSeek V3'}`
+      description: `Switched to ${provider === 'openai' ? 'OpenAI GPT-4.1' : 'DeepSeek Reasoner'}`
     });
   };
 
@@ -105,6 +102,7 @@ const Index = () => {
       }
     }
   }, [user, initializing, conversations, currentChatId, isRestoringState]);
+
   const createNewConversation = async () => {
     if (!user) {
       toast({
@@ -132,6 +130,7 @@ const Index = () => {
       });
     }
   };
+
   const sendMessageToAI = async (content: string, isRetry: boolean = false) => {
     if (!user || !currentChatId || isSendingMessage) {
       if (!user) {
@@ -270,6 +269,7 @@ const Index = () => {
       setIsSendingMessage(false);
     }
   };
+
   const handleSendMessage = async (content: string, attachments?: any[]) => {
     if (isSendingMessage) return; // Prevent duplicate sends
 
@@ -309,15 +309,18 @@ const Index = () => {
     setLastUserMessage(content);
     await sendMessageToAI(content);
   };
+
   const handleRetryMessage = async () => {
     if (lastUserMessage && !isSendingMessage) {
       await sendMessageToAI(lastUserMessage, true);
     }
   };
+
   const handleNewChat = () => {
     createNewConversation();
     setSidebarOpen(false);
   };
+
   const handleChatSelect = async (chatId: string) => {
     if (chatId === currentChatId) return; // Prevent reloading the same chat
 
@@ -360,12 +363,20 @@ const Index = () => {
 
   // Show loading state during initialization
   if (initializing) {
-    return <div className="flex h-screen bg-background text-foreground items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto"></div>
-          <p className="text-muted-foreground">Loading...</p>
+    return (
+      <div className="flex h-screen bg-background text-foreground items-center justify-center">
+        <div className="text-center space-y-6">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary/30 border-t-primary mx-auto"></div>
+            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary/20 to-transparent animate-pulse"></div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-lg font-medium">Initializing Hobnob AI</p>
+            <p className="text-muted-foreground text-sm">Setting up your intelligent assistant...</p>
+          </div>
         </div>
-      </div>;
+      </div>
+    );
   }
 
   // Show guest mode if user chooses to continue as guest
@@ -375,60 +386,134 @@ const Index = () => {
 
   // Show authentication options if not logged in
   if (!user && !authLoading) {
-    return <div className="flex h-screen bg-background text-foreground items-center justify-center">
-        <div className="text-center space-y-6 max-w-md p-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-            Welcome to Hobnob AI
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Your intelligent AI assistant powered by multiple AI models.
-          </p>
+    return (
+      <div className="flex h-screen bg-background text-foreground items-center justify-center relative overflow-hidden">
+        {/* Animated background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-purple-500/5"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,_hsl(var(--primary))_0%,_transparent_50%)] opacity-10"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,_hsl(var(--purple-500))_0%,_transparent_50%)] opacity-10"></div>
+        
+        <div className="relative z-10 text-center space-y-8 max-w-lg p-8 mx-4">
+          {/* Logo/Brand */}
+          <div className="space-y-4">
+            <div className="relative inline-block">
+              <div className="w-20 h-20 bg-gradient-to-br from-primary via-purple-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-xl mx-auto">
+                <Sparkles className="h-10 w-10 text-white" />
+              </div>
+              <div className="absolute -inset-2 bg-gradient-to-br from-primary/20 to-purple-600/20 rounded-3xl blur-xl"></div>
+            </div>
+            <h1 className="text-4xl font-bold">
+              <span className="text-gradient">Hobnob AI</span>
+            </h1>
+            <p className="text-muted-foreground text-lg leading-relaxed text-balance">
+              Your intelligent AI assistant powered by cutting-edge language models. 
+              Experience the future of conversational AI.
+            </p>
+          </div>
+          
+          {/* Features */}
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="glass-card p-4 text-left">
+              <Zap className="h-5 w-5 text-primary mb-2" />
+              <div className="font-medium">Multiple AI Models</div>
+              <div className="text-muted-foreground text-xs">OpenAI GPT-4.1 & DeepSeek</div>
+            </div>
+            <div className="glass-card p-4 text-left">
+              <Bot className="h-5 w-5 text-primary mb-2" />
+              <div className="font-medium">Advanced Features</div>
+              <div className="text-muted-foreground text-xs">File uploads & voice input</div>
+            </div>
+          </div>
           
           <div className="space-y-4">
-            <Button onClick={() => navigate('/auth')} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3" size="lg">
-              Sign In / Sign Up
+            <Button 
+              onClick={() => navigate('/auth')} 
+              className="w-full btn-primary py-4 text-base font-medium"
+              size="lg"
+            >
+              <Sparkles className="h-5 w-5 mr-2" />
+              Get Started
             </Button>
             
             <div className="flex items-center gap-4">
-              <div className="flex-1 border-t border-border"></div>
-              <span className="text-sm text-muted-foreground">or</span>
-              <div className="flex-1 border-t border-border"></div>
+              <div className="flex-1 border-t border-border/50"></div>
+              <span className="text-sm text-muted-foreground font-medium">or</span>
+              <div className="flex-1 border-t border-border/50"></div>
             </div>
             
-            <Button onClick={() => setShowGuestMode(true)} variant="outline" className="w-full py-3" size="lg">
+            <Button 
+              onClick={() => setShowGuestMode(true)} 
+              variant="outline" 
+              className="w-full btn-secondary py-4 text-base font-medium"
+              size="lg"
+            >
               Continue as Guest
             </Button>
             
-            <p className="text-xs text-muted-foreground">Guest mode: No file uploads or conversation history.</p>
+            <p className="text-xs text-muted-foreground/70">
+              Guest mode: Limited features, no conversation history or file uploads.
+            </p>
           </div>
         </div>
-      </div>;
+      </div>
+    );
   }
-  return <div className="flex h-screen bg-background text-foreground">
+
+  return (
+    <div className="flex h-screen bg-background text-foreground">
       {/* Sidebar */}
-      <ChatSidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} currentChatId={currentChatId || ''} onChatSelect={handleChatSelect} onNewChat={handleNewChat} />
+      <ChatSidebar 
+        isOpen={sidebarOpen} 
+        onToggle={() => setSidebarOpen(!sidebarOpen)} 
+        currentChatId={currentChatId || ''} 
+        onChatSelect={handleChatSelect} 
+        onNewChat={handleNewChat} 
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col lg:ml-0">
-        {/* Header */}
-        <div className="bg-card border-b border-border p-4 backdrop-blur-md bg-opacity-80">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(true)} className="lg:hidden text-muted-foreground hover:text-foreground hover:bg-accent">
-                <Menu className="h-5 w-5" />
-              </Button>
-              <div className="flex items-center gap-6">
-                <h1 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  Hobnob AI {user ? `- ${user.email}` : ''}
-                </h1>
-                <Button variant="ghost" size="sm" onClick={() => navigate('/tools')} className="text-muted-foreground hover:text-foreground hover:bg-accent">
-                  Tools Dashboard
+        {/* Enhanced Header */}
+        <div className="glass-card border-b border-border/50 backdrop-blur-xl">
+          <div className="p-4 lg:p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setSidebarOpen(true)} 
+                  className="lg:hidden text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-xl p-3"
+                >
+                  <Menu className="h-5 w-5" />
                 </Button>
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center">
+                      <Sparkles className="h-4 w-4 text-white" />
+                    </div>
+                    <h1 className="text-xl font-bold">
+                      <span className="text-gradient">Hobnob AI</span>
+                      {user && <span className="text-sm font-normal text-muted-foreground ml-2">• {user.email}</span>}
+                    </h1>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => navigate('/tools')} 
+                    className="text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-xl px-4 py-2"
+                  >
+                    Tools Dashboard
+                  </Button>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <ModelSelector selectedProvider={selectedProvider} onProviderChange={handleProviderChange} disabled={isTyping || isSendingMessage} compact />
-              <ThemeToggle />
+              <div className="flex items-center gap-3">
+                <ModelSelector 
+                  selectedProvider={selectedProvider} 
+                  onProviderChange={handleProviderChange} 
+                  disabled={isTyping || isSendingMessage} 
+                  compact 
+                />
+                <ThemeToggle />
+              </div>
             </div>
           </div>
         </div>
@@ -436,41 +521,81 @@ const Index = () => {
         {/* Chat Area */}
         <div ref={chatContainerRef} className="flex-1 overflow-y-auto pb-32">
           <div className="space-y-0">
-            {messages.length === 0 && !isTyping && !isRestoringState && <div className="flex items-center justify-center h-full text-center p-8">
-                <div className="space-y-4">
-                  <h2 className="text-xl font-semibold">Start a conversation</h2>
-                  <p className="text-muted-foreground">
-                    Ask me anything! Choose between OpenAI GPT-4.1 or DeepSeek V3 models.
-                  </p>
-                  <ModelSelector selectedProvider={selectedProvider} onProviderChange={handleProviderChange} disabled={isTyping || isSendingMessage} />
+            {messages.length === 0 && !isTyping && !isRestoringState && (
+              <div className="flex items-center justify-center h-full text-center p-8">
+                <div className="space-y-6 max-w-md">
+                  <div className="relative">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary via-purple-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-xl mx-auto">
+                      <Sparkles className="h-8 w-8 text-white" />
+                    </div>
+                    <div className="absolute -inset-2 bg-gradient-to-br from-primary/20 to-purple-600/20 rounded-3xl blur-xl"></div>
+                  </div>
+                  <div className="space-y-3">
+                    <h2 className="text-2xl font-bold text-gradient">Start a conversation</h2>
+                    <p className="text-muted-foreground leading-relaxed">
+                      Ask me anything! I'm powered by advanced AI models and ready to help with any task.
+                    </p>
+                  </div>
+                  <ModelSelector 
+                    selectedProvider={selectedProvider} 
+                    onProviderChange={handleProviderChange} 
+                    disabled={isTyping || isSendingMessage} 
+                  />
                 </div>
-              </div>}
+              </div>
+            )}
             
-            {isRestoringState && <div className="flex items-center justify-center h-full text-center p-8">
+            {isRestoringState && (
+              <div className="flex items-center justify-center h-full text-center p-8">
                 <div className="space-y-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto"></div>
-                  <p className="text-muted-foreground">Restoring conversation...</p>
+                  <div className="relative">
+                    <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary/30 border-t-primary mx-auto"></div>
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary/20 to-transparent animate-pulse"></div>
+                  </div>
+                  <p className="text-muted-foreground font-medium">Restoring conversation...</p>
                 </div>
-              </div>}
+              </div>
+            )}
             
-            {messages.map((message, index) => <div key={message.id} className="group">
-                <ChatMessage message={message} ref={index === messages.length - 1 ? lastMessageRef : null} />
-                {message.isError && message.canRetry && index === messages.length - 1 && <div className="flex justify-center py-4">
-                    <Button onClick={handleRetryMessage} variant="outline" size="sm" className="gap-2" disabled={isTyping || isSendingMessage}>
+            {messages.map((message, index) => (
+              <div key={message.id} className="group">
+                <ChatMessage 
+                  message={message} 
+                  ref={index === messages.length - 1 ? lastMessageRef : null} 
+                />
+                {message.isError && message.canRetry && index === messages.length - 1 && (
+                  <div className="flex justify-center py-6">
+                    <Button 
+                      onClick={handleRetryMessage} 
+                      variant="outline" 
+                      size="sm" 
+                      className="gap-2 btn-secondary hover:scale-105 transition-transform" 
+                      disabled={isTyping || isSendingMessage}
+                    >
                       <RefreshCw className="h-4 w-4" />
                       Try Again
                     </Button>
-                  </div>}
-              </div>)}
-            {isTyping && <div ref={lastMessageRef}>
+                  </div>
+                )}
+              </div>
+            ))}
+            
+            {isTyping && (
+              <div ref={lastMessageRef}>
                 <TypingIndicator />
-              </div>}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Input Area */}
-        <ChatInput onSendMessage={handleSendMessage} disabled={isTyping || !user || isRestoringState || isSendingMessage} />
+        <ChatInput 
+          onSendMessage={handleSendMessage} 
+          disabled={isTyping || !user || isRestoringState || isSendingMessage} 
+        />
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default Index;
