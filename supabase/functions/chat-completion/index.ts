@@ -105,11 +105,15 @@ serve(async (req) => {
 
     if (!aiResponse.ok) {
       const errorData = await aiResponse.json().catch(() => ({}));
-      console.error(`${provider} API error:`, errorData);
+      console.error(`${provider} API error:`, { status: aiResponse.status, statusText: aiResponse.statusText, errorData });
       
-      // More specific error handling for DeepSeek
-      if (provider === 'deepseek' && aiResponse.status === 401) {
-        throw new Error('DeepSeek API key is invalid or expired. Please check your API key configuration.');
+      // More specific error handling for both providers
+      if (aiResponse.status === 401) {
+        if (provider === 'deepseek') {
+          throw new Error('DeepSeek API key is invalid or expired. Please check your API key configuration.');
+        } else if (provider === 'openai') {
+          throw new Error('OpenAI API key is invalid or expired. Please check your API key configuration.');
+        }
       }
       
       throw new Error(errorData.error?.message || `${provider} API error: ${aiResponse.status} - ${aiResponse.statusText}`);

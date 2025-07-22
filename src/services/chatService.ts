@@ -30,6 +30,7 @@ export class ChatService {
       const { data, error } = await supabase.functions.invoke('chat-completion', {
         body: {
           messages,
+          provider: 'openai',
           conversationId: options.conversationId,
           userId: options.userId,
         },
