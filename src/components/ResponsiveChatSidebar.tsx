@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Plus, Settings, X, User, Crown, Bot, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -77,7 +76,7 @@ const ResponsiveChatSidebar: React.FC<ResponsiveChatSidebarProps> = ({
   if (!isMobile && !isTablet) {
     return (
       <>
-        {/* Mobile overlay - only show on smaller screens */}
+        {/* Mobile overlay */}
         {isOpen && (
           <div 
             className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -85,12 +84,11 @@ const ResponsiveChatSidebar: React.FC<ResponsiveChatSidebarProps> = ({
           />
         )}
         
-        {/* Desktop Sidebar - Lower z-index to stay below ChatInput */}
+        {/* Sidebar */}
         <div className={`
           fixed lg:relative top-0 left-0 h-full bg-gray-900 text-white
-          transform transition-transform duration-300 ease-in-out
-          ${isOpen ? 'translate-x-0 z-50' : '-translate-x-full z-50'}
-          lg:translate-x-0 lg:z-10
+          transform transition-transform duration-300 ease-in-out z-50
+          ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           w-64 flex flex-col
         `}>
           {/* Header */}

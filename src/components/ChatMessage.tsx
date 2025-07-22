@@ -1,3 +1,4 @@
+
 import React, { forwardRef } from 'react';
 import { Bot, User, Copy, ThumbsUp, ThumbsDown, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -329,11 +330,11 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, r
   return (
     <div 
       ref={ref}
-      className={`message-group flex w-full py-6 px-4 lg:px-6 transition-all duration-300 hover:bg-muted/20 ${
+      className={`message-group flex w-full py-8 px-4 lg:px-6 transition-all duration-300 hover:bg-muted/20 ${
         isAssistant ? 'bg-muted/30' : 'bg-background'
       }`}
     >
-      <div className="max-w-full w-full flex gap-4">
+      <div className="max-w-4xl mx-auto w-full flex gap-6">
         {/* Enhanced Avatar */}
         <div className={`
           flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 shadow-lg
@@ -349,17 +350,17 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, r
           )}
         </div>
 
-        {/* Content - Expanded to fill available space */}
-        <div className="flex-1 min-w-0 w-full">
+        {/* Content */}
+        <div className="flex-1 min-w-0">
           {/* Message content with enhanced formatting */}
-          <div className="prose prose-sm max-w-none dark:prose-invert message-appear w-full">
-            <div className="text-foreground w-full">
+          <div className="prose prose-sm max-w-none dark:prose-invert message-appear">
+            <div className="text-foreground">
               {formatMessageContent(message.content)}
             </div>
           </div>
 
           {/* Timestamp and actions */}
-          <div className="flex items-center gap-3 mt-4 opacity-0 group-hover:opacity-100 transition-all duration-300">
+          <div className="flex items-center gap-3 mt-6 opacity-0 group-hover:opacity-100 transition-all duration-300">
             <span className="text-xs text-muted-foreground/70 font-medium">
               {formatTime(message.timestamp)}
             </span>
