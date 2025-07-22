@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Paperclip, Mic, Camera, Upload, Image, Video, FileText, MicOff, X, Globe, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -177,7 +178,10 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
   return (
     <div 
       ref={containerRef}
-      className="fixed bottom-0 left-0 right-0 z-30"
+      className={`
+        fixed bottom-0 z-30
+        left-0 right-0 lg:left-64
+      `}
       style={{
         paddingBottom: `calc(${isMobile ? '80px' : '0px'} + env(safe-area-inset-bottom))`,
       }}

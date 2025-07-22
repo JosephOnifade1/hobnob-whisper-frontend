@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Menu, RefreshCw, Sparkles, Zap, Bot } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -510,7 +511,7 @@ const Index = () => {
         onNewChat={handleNewChat} 
       />
 
-      <div className="flex-1 flex flex-col">
+      <div className={`flex-1 flex flex-col ${!isMobile && !isTablet ? 'lg:ml-64' : ''}`}>
         {/* Header */}
         <div className="glass-card border-b border-border/50 backdrop-blur-xl">
           <div className={`p-4 ${isMobile ? 'px-4 py-3' : 'lg:p-6'}`}>
@@ -564,10 +565,7 @@ const Index = () => {
         {/* Chat Messages Container */}
         <div 
           ref={chatContainerRef} 
-          className="flex-1 overflow-y-auto scroll-smooth-mobile"
-          style={{
-            paddingBottom: `calc(${isMobile ? '140px' : '120px'} + env(safe-area-inset-bottom))`,
-          }}
+          className="flex-1 overflow-y-auto scroll-smooth-mobile chat-container"
         >
           <div className="space-y-0 min-h-full">
             {messages.length === 0 && !isTyping && !isRestoringState && (
