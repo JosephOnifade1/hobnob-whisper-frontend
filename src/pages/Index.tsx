@@ -332,6 +332,13 @@ const Index = () => {
     // Force scroll to bottom when user sends a message
     forceScrollToBottom();
     
+    // Process attachments to include metadata
+    const processedAttachments = attachments ? attachments.map(attachment => ({
+      ...attachment,
+      timestamp: new Date().toISOString(),
+      uploadStatus: 'completed'
+    })) : [];
+    
     if (!currentChatId) {
       const conversation = await createConversationWithMessage(content);
       if (conversation) {
@@ -342,7 +349,7 @@ const Index = () => {
           content,
           role: 'user',
           timestamp: new Date(),
-          attachments
+          attachments: processedAttachments
         };
         setMessages([userMessage]);
         setLastUserMessage(content);
@@ -350,12 +357,13 @@ const Index = () => {
       }
       return;
     }
+    
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       content,
       role: 'user',
       timestamp: new Date(),
-      attachments
+      attachments: processedAttachments
     };
     setMessages(prev => [...prev, userMessage]);
     setLastUserMessage(content);
@@ -655,7 +663,8 @@ const Index = () => {
 
         <ChatInput 
           onSendMessage={handleSendMessage} 
-          disabled={isTyping || !user || isRestoringState || isSendingMessage} 
+          disabled={isTyping || !user || isRestoringState || isSendingMessage}
+          conversationId={currentChatId || undefined}
         />
       </div>
 

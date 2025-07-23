@@ -86,6 +86,60 @@ export type Database = {
         }
         Relationships: []
       }
+      image_generations: {
+        Row: {
+          completed_at: string | null
+          conversation_id: string
+          created_at: string
+          error_message: string | null
+          id: string
+          image_path: string | null
+          message_id: string | null
+          prompt: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          conversation_id: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          image_path?: string | null
+          message_id?: string | null
+          prompt: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          conversation_id?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          image_path?: string | null
+          message_id?: string | null
+          prompt?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_generations_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_generations_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           attachments: Json | null

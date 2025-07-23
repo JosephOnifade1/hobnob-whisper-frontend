@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client'
 import type { Database } from '@/integrations/supabase/types'
 
@@ -388,3 +387,106 @@ export const toolUsageService = {
     return { data, error: null };
   }
 }
+
+// Image generation functions
+export const imageGenerationService = {
+  // Create image generation request
+  create: async (data: {
+    user_id: string;
+    conversation_id: string;
+    message_id?: string;
+    prompt: string;
+  }): Promise<{ data: any | null; error: DatabaseError | null }> => {
+    logDatabaseOperation('CREATE', 'image_generations', data);
+    
+    const { data: generation, error } = await supabase
+      .from('image_generations')
+      .insert(data)
+      .select()
+      .single();
+
+    if (error) {
+      return {
+        data: null,
+        error: handleDatabaseError('CREATE', 'image_generations', error)
+      };
+    }
+
+    console.log('Image generation created successfully:', generation.id);
+    return { data: generation, error: null };
+  },
+
+  // Get image generations for a conversation
+  getByConversationId: async (conversationId: string): Promise<{ data: any[] | null; error: DatabaseError | null }> => {
+    logDatabaseOperation('GET_BY_CONVERSATION', 'image_generations', { conversationId });
+    
+    const { data, error } = await supabase
+      .from('image_generations')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return {
+        data: null,
+        error: handleDatabaseError('GET_BY_CONVERSATION', 'image_generations', error)
+      };
+    }
+
+    console.log(`Retrieved ${data?.length || 0} image generations for conversation:`, conversationId);
+    return { data, error: null };
+  },
+
+  // Update image generation status
+  updateStatus: async (id: string, updates: {
+    status: string;
+    image_path?: string;
+    error_message?: string;
+    completed_at?: string;
+  }): Promise<{ data: any | null; error: DatabaseError | null }> => {
+    logDatabaseOperation('UPDATE_STATUS', 'image_generations', { id, updates });
+    
+    const { data, error } = await supabase
+      .from('image_generations')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      return {
+        data: null,
+        error: handleDatabaseError('UPDATE_STATUS', 'image_generations', error)
+      };
+    }
+
+    console.log('Updated image generation status:', data.id);
+    return { data, error: null };
+  },
+
+  // Get user's image generation history
+  getUserGenerations: async (userId: string, limit?: number): Promise<{ data: any[] | null; error: DatabaseError | null }> => {
+    logDatabaseOperation('GET_USER_GENERATIONS', 'image_generations', { userId, limit });
+    
+    let query = supabase
+      .from('image_generations')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (limit) {
+      query = query.limit(limit);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      return {
+        data: null,
+        error: handleDatabaseError('GET_USER_GENERATIONS', 'image_generations', error)
+      };
+    }
+
+    return { data, error: null };
+  }
+};
