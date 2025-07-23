@@ -5,16 +5,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { useDeviceType } from '@/hooks/useDeviceType';
+
 interface ChatInputProps {
   onSendMessage: (message: string, attachments?: any[]) => void;
   disabled?: boolean;
 }
+
 interface Attachment {
   id: string;
   type: 'image' | 'video' | 'audio' | 'file';
   file: File;
   preview?: string;
 }
+
 const ChatInput: React.FC<ChatInputProps> = ({
   onSendMessage,
   disabled = false
@@ -169,127 +172,218 @@ const ChatInput: React.FC<ChatInputProps> = ({
       toast.error('Could not access camera');
     }
   };
-  return <div ref={containerRef} className={`
-        fixed bottom-0 z-30
-        left-0 right-0 lg:left-64
-      `} style={{
-    paddingBottom: `calc(${isMobile ? '80px' : '0px'} + env(safe-area-inset-bottom))`
-  }}>
+
+  return (
+    <div 
+      ref={containerRef} 
+      className="fixed bottom-0 left-0 right-0 lg:left-64 z-30"
+      style={{
+        paddingBottom: `calc(${isMobile ? '80px' : '0px'} + env(safe-area-inset-bottom))`
+      }}
+    >
       <div className="container-responsive">
         {/* Enhanced background with better coverage */}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/98 to-background/80 pointer-events-none" />
         <div className="absolute inset-0 backdrop-blur-xl pointer-events-none" />
         
         {/* Attachments Preview */}
-        {attachments.length > 0 && <div className="mb-4 flex flex-wrap gap-3 relative z-10">
-            {attachments.map(attachment => <Card key={attachment.id} className="glass-card relative p-3 flex items-center gap-3 max-w-xs transition-all duration-200 hover:shadow-xl">
-                {attachment.type === 'image' && attachment.preview && <div className="relative">
+        {attachments.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-3 relative z-10">
+            {attachments.map(attachment => (
+              <Card key={attachment.id} className="glass-card relative p-3 flex items-center gap-3 max-w-xs transition-all duration-200 hover:shadow-xl">
+                {attachment.type === 'image' && attachment.preview && (
+                  <div className="relative">
                     <img src={attachment.preview} alt="Preview" className="w-12 h-12 object-cover rounded-md" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-md" />
-                  </div>}
-                {attachment.type === 'video' && attachment.preview && <div className="relative">
+                  </div>
+                )}
+                {attachment.type === 'video' && attachment.preview && (
+                  <div className="relative">
                     <video src={attachment.preview} className="w-12 h-12 object-cover rounded-md" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-md flex items-center justify-center">
                       <Video className="h-4 w-4 text-white" />
                     </div>
-                  </div>}
-                {attachment.type === 'audio' && <div className="flex items-center gap-3 text-foreground">
+                  </div>
+                )}
+                {attachment.type === 'audio' && (
+                  <div className="flex items-center gap-3 text-foreground">
                     <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-md flex items-center justify-center">
-                      <Mic className="h-5 w-5 text-white py-[34px]" />
+                      <Mic className="h-5 w-5 text-white" />
                     </div>
                     <span className="text-sm font-medium">Audio Recording</span>
-                  </div>}
-                {attachment.type === 'file' && <div className="flex items-center gap-3 text-foreground">
+                  </div>
+                )}
+                {attachment.type === 'file' && (
+                  <div className="flex items-center gap-3 text-foreground">
                     <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-md flex items-center justify-center">
                       <FileText className="h-5 w-5 text-white" />
                     </div>
                     <span className="text-sm font-medium truncate max-w-[120px]">{attachment.file.name}</span>
-                  </div>}
-                <Button variant="ghost" size="sm" onClick={() => removeAttachment(attachment.id)} className="absolute -top-2 -right-2 h-6 w-6 p-0 rounded-full bg-red-500 text-white hover:bg-red-600 shadow-lg">
+                  </div>
+                )}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => removeAttachment(attachment.id)} 
+                  className="absolute -top-2 -right-2 h-6 w-6 p-0 rounded-full bg-red-500 text-white hover:bg-red-600 shadow-lg"
+                >
                   <X className="h-3 w-3" />
                 </Button>
-              </Card>)}
-          </div>}
+              </Card>
+            ))}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="relative z-10">
           <div className={`glass-card transition-all duration-300 ${isFocused ? 'shadow-xl border-primary/30' : ''} ${isRecording ? 'border-red-400/50 shadow-red-400/20' : ''}`}>
-            <div className={`${isMobile ? 'p-4' : 'p-4 lg:p-6'} flex items-end gap-4`}>
-              {/* Attachment Menu */}
-              <div className="relative">
-                <Button type="button" variant="ghost" size="sm" onClick={() => setShowAttachmentMenu(!showAttachmentMenu)} className="text-muted-foreground hover:text-foreground p-3 rounded-xl hover:bg-accent/50 transition-all duration-200 touch-target">
-                  <Paperclip className="h-5 w-5" />
-                </Button>
+            <div className="p-4 lg:p-6">
+              <div className="flex items-end gap-3">
+                {/* Attachment Menu */}
+                <div className="relative flex-shrink-0">
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setShowAttachmentMenu(!showAttachmentMenu)} 
+                    className="text-muted-foreground hover:text-foreground p-2 rounded-xl hover:bg-accent/50 transition-all duration-200 touch-target flex items-center justify-center"
+                  >
+                    <Paperclip className="h-5 w-5" />
+                  </Button>
 
-                {showAttachmentMenu && <Card className="absolute bottom-full mb-3 left-0 glass-card min-w-[220px] z-20 overflow-hidden">
-                    <div className="p-2">
-                      <div className="grid gap-1">
-                        <Button type="button" variant="ghost" size="sm" onClick={() => handleFileSelect('image')} className="w-full justify-start text-foreground hover:bg-accent/50 rounded-lg py-3 px-4 transition-all duration-200 touch-target">
-                          <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center mr-3">
-                            <Image className="h-4 w-4 text-white" />
-                          </div>
-                          <div className="text-left">
-                            <div className="font-medium">Upload Image</div>
-                            <div className="text-xs text-muted-foreground">PNG, JPG, GIF up to 50MB</div>
-                          </div>
-                        </Button>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => handleFileSelect('video')} className="w-full justify-start text-foreground hover:bg-accent/50 rounded-lg py-3 px-4 transition-all duration-200 touch-target">
-                          <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-pink-500 rounded-lg flex items-center justify-center mr-3">
-                            <Video className="h-4 w-4 text-white" />
-                          </div>
-                          <div className="text-left">
-                            <div className="font-medium">Upload Video</div>
-                            <div className="text-xs text-muted-foreground">MP4, MOV up to 50MB</div>
-                          </div>
-                        </Button>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => handleFileSelect('file')} className="w-full justify-start text-foreground hover:bg-accent/50 rounded-lg py-3 px-4 transition-all duration-200 touch-target">
-                          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center mr-3">
-                            <FileText className="h-4 w-4 text-white" />
-                          </div>
-                          <div className="text-left">
-                            <div className="font-medium">Upload File</div>
-                            <div className="text-xs text-muted-foreground">PDF, DOC, TXT, CSV</div>
-                          </div>
-                        </Button>
-                        <Button type="button" variant="ghost" size="sm" onClick={captureCamera} className="w-full justify-start text-foreground hover:bg-accent/50 rounded-lg py-3 px-4 transition-all duration-200 touch-target">
-                          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-violet-500 rounded-lg flex items-center justify-center mr-3">
-                            <Camera className="h-4 w-4 text-white" />
-                          </div>
-                          <div className="text-left">
-                            <div className="font-medium">Take Photo</div>
-                            <div className="text-xs text-muted-foreground">Capture with camera</div>
-                          </div>
-                        </Button>
+                  {showAttachmentMenu && (
+                    <Card className="absolute bottom-full mb-3 left-0 glass-card min-w-[220px] z-20 overflow-hidden">
+                      <div className="p-2">
+                        <div className="grid gap-1">
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleFileSelect('image')} 
+                            className="w-full justify-start text-foreground hover:bg-accent/50 rounded-lg py-3 px-4 transition-all duration-200 touch-target"
+                          >
+                            <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center mr-3">
+                              <Image className="h-4 w-4 text-white" />
+                            </div>
+                            <div className="text-left">
+                              <div className="font-medium">Upload Image</div>
+                              <div className="text-xs text-muted-foreground">PNG, JPG, GIF up to 50MB</div>
+                            </div>
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleFileSelect('video')} 
+                            className="w-full justify-start text-foreground hover:bg-accent/50 rounded-lg py-3 px-4 transition-all duration-200 touch-target"
+                          >
+                            <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-pink-500 rounded-lg flex items-center justify-center mr-3">
+                              <Video className="h-4 w-4 text-white" />
+                            </div>
+                            <div className="text-left">
+                              <div className="font-medium">Upload Video</div>
+                              <div className="text-xs text-muted-foreground">MP4, MOV up to 50MB</div>
+                            </div>
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleFileSelect('file')} 
+                            className="w-full justify-start text-foreground hover:bg-accent/50 rounded-lg py-3 px-4 transition-all duration-200 touch-target"
+                          >
+                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center mr-3">
+                              <FileText className="h-4 w-4 text-white" />
+                            </div>
+                            <div className="text-left">
+                              <div className="font-medium">Upload File</div>
+                              <div className="text-xs text-muted-foreground">PDF, DOC, TXT, CSV</div>
+                            </div>
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={captureCamera} 
+                            className="w-full justify-start text-foreground hover:bg-accent/50 rounded-lg py-3 px-4 transition-all duration-200 touch-target"
+                          >
+                            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-violet-500 rounded-lg flex items-center justify-center mr-3">
+                              <Camera className="h-4 w-4 text-white" />
+                            </div>
+                            <div className="text-left">
+                              <div className="font-medium">Take Photo</div>
+                              <div className="text-xs text-muted-foreground">Capture with camera</div>
+                            </div>
+                          </Button>
+                        </div>
                       </div>
+                    </Card>
+                  )}
+                </div>
+
+                {/* Message input */}
+                <div className="flex-1 relative min-w-0">
+                  <Textarea 
+                    ref={textareaRef} 
+                    value={message} 
+                    onChange={e => setMessage(e.target.value)} 
+                    onKeyDown={handleKeyDown} 
+                    onFocus={() => setIsFocused(true)} 
+                    onBlur={() => setIsFocused(false)} 
+                    placeholder="Ask anything..." 
+                    disabled={disabled} 
+                    className="border-0 bg-transparent resize-none focus:ring-0 focus:outline-none min-h-[24px] max-h-32 text-foreground placeholder-muted-foreground/70 text-base leading-relaxed p-0 w-full" 
+                    rows={1} 
+                    style={{
+                      fontSize: isMobile ? '16px' : '14px'
+                    }} 
+                  />
+                  {message.trim() && (
+                    <div className="absolute top-0 right-0 text-xs text-muted-foreground/50 mt-1">
+                      <Sparkles className="h-3 w-3" />
                     </div>
-                  </Card>}
-              </div>
+                  )}
+                </div>
 
-              {/* Message input */}
-              <div className="flex-1 relative">
-                <Textarea ref={textareaRef} value={message} onChange={e => setMessage(e.target.value)} onKeyDown={handleKeyDown} onFocus={() => setIsFocused(true)} onBlur={() => setIsFocused(false)} placeholder="Ask anything..." disabled={disabled} className="border-0 bg-transparent resize-none focus:ring-0 focus:outline-none min-h-[24px] max-h-32 text-foreground placeholder-muted-foreground/70 text-base leading-relaxed p-0" rows={1} style={{
-                fontSize: isMobile ? '16px' : '14px'
-              }} />
-                {message.trim() && <div className="absolute top-0 right-0 text-xs text-muted-foreground/50 mt-1">
-                    <Sparkles className="h-3 w-3" />
-                  </div>}
-              </div>
+                {/* Action buttons */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Language/Web toggle */}
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-muted-foreground hover:text-foreground p-2 rounded-xl hover:bg-accent/50 transition-all duration-200 touch-target flex items-center justify-center"
+                  >
+                    <Globe className="h-5 w-5" />
+                  </Button>
 
-              {/* Action buttons */}
-              <div className="flex items-center gap-2">
-                {/* Language/Web toggle */}
-                <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground p-3 rounded-xl hover:bg-accent/50 transition-all duration-200 touch-target">
-                  <Globe className="h-5 w-5" />
-                </Button>
+                  {/* Voice recording button */}
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={isRecording ? stopRecording : startRecording} 
+                    className={`p-2 rounded-xl transition-all duration-200 touch-target flex items-center justify-center ${
+                      isRecording 
+                        ? 'text-red-400 bg-red-400/10 animate-pulse shadow-red-400/20 shadow-lg' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                    }`}
+                  >
+                    {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                  </Button>
 
-                {/* Voice recording button */}
-                <Button type="button" variant="ghost" size="sm" onClick={isRecording ? stopRecording : startRecording} className={`p-3 rounded-xl transition-all duration-200 touch-target ${isRecording ? 'text-red-400 bg-red-400/10 animate-pulse shadow-red-400/20 shadow-lg' : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}`}>
-                  {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                </Button>
-
-                {/* Send button */}
-                <Button type="submit" disabled={!message.trim() && attachments.length === 0 || disabled} className={`btn-primary p-3 rounded-xl transition-all duration-200 touch-target ${(message.trim() || attachments.length > 0) && !disabled ? 'opacity-100 hover:scale-105' : 'opacity-50 cursor-not-allowed'}`}>
-                  <Send className="h-5 w-5" />
-                </Button>
+                  {/* Send button */}
+                  <Button 
+                    type="submit" 
+                    disabled={!message.trim() && attachments.length === 0 || disabled} 
+                    className={`btn-primary p-2 rounded-xl transition-all duration-200 touch-target flex items-center justify-center ${
+                      (message.trim() || attachments.length > 0) && !disabled 
+                        ? 'opacity-100 hover:scale-105' 
+                        : 'opacity-50 cursor-not-allowed'
+                    }`}
+                  >
+                    <Send className="h-5 w-5" />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -300,6 +394,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
           Hobnob AI can make mistakes. Consider checking important information.
         </p>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default ChatInput;
