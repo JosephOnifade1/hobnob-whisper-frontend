@@ -58,7 +58,7 @@ const GuestMode = () => {
 
       const response = await AIService.sendMessage(chatMessages, {
         isGuest: true,
-        provider: 'deepseek', // Lightning Mode for guest users
+        providerId: 'lightning', // Lightning Mode for guest users
       });
 
       // Add AI response

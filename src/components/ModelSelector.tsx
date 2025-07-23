@@ -81,10 +81,14 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                 </div>
                 <div className="flex items-center gap-1 ml-4">
                   {provider.capabilities.chat && (
-                    <MessageCircle className="h-3 w-3 text-blue-500" title="Chat enabled" />
+                    <div title="Chat enabled">
+                      <MessageCircle className="h-3 w-3 text-blue-500" />
+                    </div>
                   )}
                   {provider.capabilities.image && (
-                    <Image className="h-3 w-3 text-purple-500" title="Image generation enabled" />
+                    <div title="Image generation enabled">
+                      <Image className="h-3 w-3 text-purple-500" />
+                    </div>
                   )}
                 </div>
               </div>
