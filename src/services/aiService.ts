@@ -1,10 +1,11 @@
 
 import { ChatService } from './chatService';
 import { DeepSeekService } from './deepseekService';
+import { GrokService } from './grokService';
 import { GuestChatService } from './guestChatService';
 import { UnifiedProviderService } from './unifiedProviderService';
 
-export type AIProvider = 'openai' | 'deepseek';
+export type AIProvider = 'openai' | 'deepseek' | 'grok';
 
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system';
@@ -44,7 +45,7 @@ export class AIService {
 
   static getDefaultProvider(): AIProvider {
     const unifiedProvider = UnifiedProviderService.getSavedProvider();
-    return unifiedProvider.chatProvider;
+    return unifiedProvider.chatProvider as AIProvider;
   }
 
   static getDefaultProviderId(): string {
@@ -55,26 +56,28 @@ export class AIService {
     messages: AIMessage[],
     options: AIServiceOptions = {}
   ): Promise<AIResponse> {
-    // For guest users, always use Lightning Mode (deepseek)
+    // For guest users, always use Lightning Mode (openai)
     let chatProvider: AIProvider;
     
     if (options.isGuest) {
-      chatProvider = 'deepseek';
+      chatProvider = 'openai';
     } else {
       const unifiedProvider = options.providerId 
         ? UnifiedProviderService.getProvider(options.providerId)
         : UnifiedProviderService.getSavedProvider();
       
-      chatProvider = unifiedProvider?.chatProvider || 'openai';
+      chatProvider = unifiedProvider?.chatProvider as AIProvider || 'openai';
     }
     
     try {
-      console.log(`Processing message with ${chatProvider === 'openai' ? 'Enhanced Mode' : 'Lightning Mode'}`);
+      console.log(`Processing message with ${chatProvider === 'grok' ? 'Enhanced Mode (Grok)' : chatProvider === 'openai' ? 'Lightning Mode (OpenAI)' : 'DeepSeek'}`);
       
       let response;
       if (options.isGuest) {
         // For guest users, use the guest chat service with Lightning Mode
         response = await GuestChatService.sendMessage(messages);
+      } else if (chatProvider === 'grok') {
+        response = await GrokService.sendMessage(messages, options);
       } else if (chatProvider === 'deepseek') {
         response = await DeepSeekService.sendMessage(messages, options);
       } else {
@@ -86,18 +89,18 @@ export class AIService {
         provider: chatProvider,
       };
     } catch (error) {
-      console.error(`Error with ${chatProvider === 'openai' ? 'Enhanced Mode' : 'Lightning Mode'}:`, error);
+      console.error(`Error with ${chatProvider === 'grok' ? 'Enhanced Mode (Grok)' : chatProvider === 'openai' ? 'Lightning Mode (OpenAI)' : 'DeepSeek'}:`, error);
       
       // Try fallback capability if the primary one fails (only for authenticated users)
       if (!options.isGuest) {
-        const fallbackProvider: AIProvider = chatProvider === 'openai' ? 'deepseek' : 'openai';
-        const fallbackMode = fallbackProvider === 'openai' ? 'Enhanced Mode' : 'Lightning Mode';
+        const fallbackProvider: AIProvider = chatProvider === 'grok' ? 'openai' : 'grok';
+        const fallbackMode = fallbackProvider === 'grok' ? 'Enhanced Mode (Grok)' : 'Lightning Mode (OpenAI)';
         console.log(`Attempting fallback to ${fallbackMode}`);
         
         try {
           let fallbackResponse;
-          if (fallbackProvider === 'deepseek') {
-            fallbackResponse = await DeepSeekService.sendMessage(messages, options);
+          if (fallbackProvider === 'grok') {
+            fallbackResponse = await GrokService.sendMessage(messages, options);
           } else {
             fallbackResponse = await ChatService.sendMessage(messages, options);
           }
@@ -118,14 +121,14 @@ export class AIService {
   static getAvailableProviders(): { value: AIProvider; label: string; description: string }[] {
     return [
       {
-        value: 'openai',
+        value: 'grok',
         label: 'Enhanced Mode',
-        description: 'Advanced reasoning and creativity'
+        description: 'Advanced creativity with Grok AI'
       },
       {
-        value: 'deepseek',
+        value: 'openai',
         label: 'Lightning Mode',
-        description: 'Fast and efficient responses'
+        description: 'Fast responses with OpenAI'
       }
     ];
   }

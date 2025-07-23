@@ -29,13 +29,18 @@ export class ImageIntentService {
     'design a picture',
     'sketch',
     'render an image',
-    'produce an image'
+    'produce an image',
+    'generate image',
+    'create image',
+    'make image',
+    'draw image'
   ];
 
   private static imagePatterns = [
     /(?:generate|create|make|draw|show me|paint|illustrate|visualize|design|sketch|render|produce)\s+(?:an?\s+)?(?:image|picture|artwork|illustration|drawing|painting|sketch|visual|graphic)\s+(?:of|showing|depicting|with|featuring)\s+(.+)/i,
     /(?:can you|could you|please)\s+(?:generate|create|make|draw|show me|paint|illustrate|visualize|design|sketch|render|produce)\s+(?:an?\s+)?(?:image|picture|artwork|illustration|drawing|painting|sketch|visual|graphic)\s+(?:of|showing|depicting|with|featuring)?\s*(.+)/i,
     /(?:i want|i need|i'd like)\s+(?:an?\s+)?(?:image|picture|artwork|illustration|drawing|painting|sketch|visual|graphic)\s+(?:of|showing|depicting|with|featuring)\s+(.+)/i,
+    /(?:generate|create|make|draw)\s+(?:image|picture)\s+(.+)/i,
     /draw me\s+(.+)/i,
     /paint me\s+(.+)/i,
     /illustrate\s+(.+)/i,
@@ -63,7 +68,7 @@ export class ImageIntentService {
       const match = message.match(pattern);
       if (match && match[1]) {
         const imagePrompt = match[1].trim();
-        if (imagePrompt.length > 3) { // Ensure we have a meaningful prompt
+        if (imagePrompt.length > 2) { // Lower threshold for meaningful prompt
           return {
             hasImageIntent: true,
             imagePrompt,
@@ -74,8 +79,19 @@ export class ImageIntentService {
       }
     }
 
+    // Special handling for simple "generate image of X" patterns
+    const simplePattern = /(?:generate|create|make|draw)\s+image\s+of\s+(.+)/i;
+    const simpleMatch = message.match(simplePattern);
+    if (simpleMatch && simpleMatch[1]) {
+      return {
+        hasImageIntent: true,
+        imagePrompt: simpleMatch[1].trim(),
+        originalMessage: message,
+        confidence: 0.95
+      };
+    }
+
     // Fallback: if we have keywords but no clear pattern match
-    // Extract everything after the image generation request
     const keywordMatch = this.imageKeywords.find(keyword => 
       normalizedMessage.includes(keyword.toLowerCase())
     );
@@ -86,7 +102,7 @@ export class ImageIntentService {
       
       // Look for "of" or similar prepositions
       const ofMatch = afterKeyword.match(/^(?:of|showing|depicting|with|featuring)?\s*(.+)/i);
-      if (ofMatch && ofMatch[1] && ofMatch[1].trim().length > 3) {
+      if (ofMatch && ofMatch[1] && ofMatch[1].trim().length > 2) {
         return {
           hasImageIntent: true,
           imagePrompt: ofMatch[1].trim(),

@@ -5,7 +5,7 @@ export interface UnifiedProvider {
   id: string;
   name: string;
   description: string;
-  chatProvider: AIProvider;
+  chatProvider: AIProvider | 'grok';
   imageProvider: 'openai' | 'grok';
   icon: string;
   capabilities: {
@@ -19,9 +19,9 @@ export class UnifiedProviderService {
     {
       id: 'enhanced',
       name: 'Enhanced Mode',
-      description: 'Advanced reasoning and creativity',
-      chatProvider: 'openai',
-      imageProvider: 'openai',
+      description: 'Advanced creativity with Grok AI',
+      chatProvider: 'grok',
+      imageProvider: 'grok',
       icon: 'brain',
       capabilities: {
         chat: true,
@@ -31,9 +31,9 @@ export class UnifiedProviderService {
     {
       id: 'lightning',
       name: 'Lightning Mode',
-      description: 'Fast and efficient responses',
-      chatProvider: 'deepseek',
-      imageProvider: 'grok',
+      description: 'Fast responses with OpenAI',
+      chatProvider: 'openai',
+      imageProvider: 'openai',
       icon: 'zap',
       capabilities: {
         chat: true,
@@ -50,7 +50,7 @@ export class UnifiedProviderService {
     return this.providers.find(provider => provider.id === id);
   }
 
-  static getProviderByChat(chatProvider: AIProvider): UnifiedProvider | undefined {
+  static getProviderByChat(chatProvider: AIProvider | 'grok'): UnifiedProvider | undefined {
     return this.providers.find(provider => provider.chatProvider === chatProvider);
   }
 

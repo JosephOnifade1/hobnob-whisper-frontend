@@ -32,6 +32,24 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
     }
   };
 
+  const getProviderDetails = (provider: UnifiedProvider) => {
+    if (provider.id === 'enhanced') {
+      return {
+        chatProvider: 'Grok',
+        imageProvider: 'Grok'
+      };
+    } else if (provider.id === 'lightning') {
+      return {
+        chatProvider: 'OpenAI',
+        imageProvider: 'OpenAI'
+      };
+    }
+    return {
+      chatProvider: 'Unknown',
+      imageProvider: 'Unknown'
+    };
+  };
+
   if (compact) {
     return (
       <div className="flex items-center gap-1">
@@ -69,31 +87,36 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
-          {providers.map((provider) => (
-            <SelectItem key={provider.id} value={provider.id}>
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-2">
-                  {getProviderIcon(provider)}
-                  <div>
-                    <div className="font-medium">{provider.name}</div>
-                    <div className="text-xs text-muted-foreground">{provider.description}</div>
+          {providers.map((provider) => {
+            const details = getProviderDetails(provider);
+            return (
+              <SelectItem key={provider.id} value={provider.id}>
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    {getProviderIcon(provider)}
+                    <div>
+                      <div className="font-medium">{provider.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {provider.description} • Chat: {details.chatProvider} • Images: {details.imageProvider}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 ml-4">
+                    {provider.capabilities.chat && (
+                      <div title="Chat enabled">
+                        <MessageCircle className="h-3 w-3 text-blue-500" />
+                      </div>
+                    )}
+                    {provider.capabilities.image && (
+                      <div title="Image generation enabled">
+                        <Image className="h-3 w-3 text-purple-500" />
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-1 ml-4">
-                  {provider.capabilities.chat && (
-                    <div title="Chat enabled">
-                      <MessageCircle className="h-3 w-3 text-blue-500" />
-                    </div>
-                  )}
-                  {provider.capabilities.image && (
-                    <div title="Image generation enabled">
-                      <Image className="h-3 w-3 text-purple-500" />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </SelectItem>
-          ))}
+              </SelectItem>
+            );
+          })}
         </SelectContent>
       </Select>
     </div>

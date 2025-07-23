@@ -188,6 +188,9 @@ serve(async (req) => {
     if (provider === 'deepseek' && !deepSeekApiKey) {
       throw new Error('DeepSeek API key not configured');
     }
+    if (provider === 'grok' && !xaiApiKey) {
+      throw new Error('Grok API key not configured');
+    }
 
     // Initialize Supabase client for authenticated users
     let supabase;
@@ -221,17 +224,17 @@ serve(async (req) => {
     let generatedImageData = null;
     if (imageIntent?.hasImageIntent && imageIntent.confidence > 0.5 && !isGuest && supabase && user) {
       try {
-        console.log(`Generating image with prompt: "${imageIntent.imagePrompt}" using ${provider === 'deepseek' ? 'Grok' : 'OpenAI'}`);
+        console.log(`Generating image with prompt: "${imageIntent.imagePrompt}" using ${provider === 'grok' ? 'Grok' : 'OpenAI'}`);
         
         let base64Data;
         let imageProvider;
         
-        if (provider === 'deepseek' && xaiApiKey) {
-          // Use Grok for Lightning Mode
+        if (provider === 'grok' && xaiApiKey) {
+          // Use Grok for Enhanced Mode
           base64Data = await generateImageWithGrok(imageIntent.imagePrompt);
           imageProvider = 'grok';
         } else if (openAIApiKey) {
-          // Use OpenAI for Enhanced Mode or fallback
+          // Use OpenAI for Lightning Mode or fallback
           base64Data = await generateImageWithOpenAI(imageIntent.imagePrompt);
           imageProvider = 'openai';
         } else {
@@ -326,7 +329,21 @@ serve(async (req) => {
     let aiResponse;
     let aiMessage;
 
-    if (provider === 'deepseek') {
+    if (provider === 'grok') {
+      aiResponse = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${xaiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'grok-beta',
+          messages: processedMessages,
+          max_tokens: 2000,
+          temperature: 0.7,
+        }),
+      });
+    } else if (provider === 'deepseek') {
       aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -361,7 +378,9 @@ serve(async (req) => {
       console.error(`${provider} API error:`, { status: aiResponse.status, statusText: aiResponse.statusText, errorData });
       
       if (aiResponse.status === 401) {
-        if (provider === 'deepseek') {
+        if (provider === 'grok') {
+          throw new Error('Grok API key is invalid or expired. Please check your API key configuration.');
+        } else if (provider === 'deepseek') {
           throw new Error('DeepSeek API key is invalid or expired. Please check your API key configuration.');
         } else if (provider === 'openai') {
           throw new Error('OpenAI API key is invalid or expired. Please check your API key configuration.');
