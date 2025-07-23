@@ -293,7 +293,7 @@ const Index = () => {
       
       if (response.generatedImage) {
         const provider = UnifiedProviderService.getProvider(selectedProvider);
-        const imageModeText = provider?.id === 'lightning' ? 'Grok' : 'OpenAI';
+        const imageModeText = provider?.id === 'enhanced' ? 'Grok' : 'OpenAI';
         toast({
           title: "Image Generated!",
           description: `Successfully created image using ${imageModeText}. You can download it from the chat.`

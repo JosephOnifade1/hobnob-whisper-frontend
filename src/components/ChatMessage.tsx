@@ -1,4 +1,3 @@
-
 import React, { forwardRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +6,7 @@ import { TouchButton } from '@/components/ui/touch-button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDeviceType } from '@/hooks/useDeviceType';
+import { AIProvider } from '@/services/aiService';
 import { 
   User, 
   Bot, 
@@ -30,7 +30,7 @@ interface Message {
   attachments?: any[];
   isError?: boolean;
   canRetry?: boolean;
-  provider?: 'openai' | 'deepseek';
+  provider?: AIProvider;
 }
 
 interface ChatMessageProps {
@@ -59,23 +59,27 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, r
     }
   };
 
-  const getProviderIcon = (provider?: string) => {
+  const getProviderIcon = (provider?: AIProvider) => {
     switch (provider) {
       case 'openai':
-        return <Sparkles className="h-3 w-3 text-primary" />;
-      case 'deepseek':
         return <Zap className="h-3 w-3 text-blue-500" />;
+      case 'grok':
+        return <Sparkles className="h-3 w-3 text-purple-500" />;
+      case 'deepseek':
+        return <Zap className="h-3 w-3 text-green-500" />;
       default:
         return <Bot className="h-3 w-3" />;
     }
   };
 
-  const getProviderName = (provider?: string) => {
+  const getProviderName = (provider?: AIProvider) => {
     switch (provider) {
       case 'openai':
+        return 'Lightning Mode';
+      case 'grok':
         return 'Enhanced Mode';
       case 'deepseek':
-        return 'Lightning Mode';
+        return 'DeepSeek Mode';
       default:
         return 'AI Assistant';
     }
