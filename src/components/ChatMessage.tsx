@@ -17,7 +17,6 @@ import {
   Video, 
   Mic,
   Sparkles,
-  Zap,
   ExternalLink
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
@@ -60,29 +59,17 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(({ message }, r
   };
 
   const getProviderIcon = (provider?: AIProvider) => {
-    switch (provider) {
-      case 'openai':
-        return <Zap className="h-3 w-3 text-blue-500" />;
-      case 'grok':
-        return <Sparkles className="h-3 w-3 text-purple-500" />;
-      case 'deepseek':
-        return <Zap className="h-3 w-3 text-green-500" />;
-      default:
-        return <Bot className="h-3 w-3" />;
+    if (provider === 'grok') {
+      return <Sparkles className="h-3 w-3 text-purple-500" />;
     }
+    return <Bot className="h-3 w-3" />;
   };
 
   const getProviderName = (provider?: AIProvider) => {
-    switch (provider) {
-      case 'openai':
-        return 'Lightning Mode';
-      case 'grok':
-        return 'Enhanced Mode';
-      case 'deepseek':
-        return 'DeepSeek Mode';
-      default:
-        return 'AI Assistant';
+    if (provider === 'grok') {
+      return 'Grok AI';
     }
+    return 'AI Assistant';
   };
 
   const AttachmentPreview = ({ attachment }: { attachment: any }) => {
