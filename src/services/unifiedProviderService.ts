@@ -17,24 +17,12 @@ export interface UnifiedProvider {
 export class UnifiedProviderService {
   private static providers: UnifiedProvider[] = [
     {
-      id: 'enhanced',
-      name: 'Enhanced Mode',
-      description: 'Advanced creativity with Grok AI',
+      id: 'grok',
+      name: 'Grok AI',
+      description: 'Advanced AI powered by Grok',
       chatProvider: 'grok',
       imageProvider: 'grok',
       icon: 'brain',
-      capabilities: {
-        chat: true,
-        image: true
-      }
-    },
-    {
-      id: 'lightning',
-      name: 'Lightning Mode',
-      description: 'Fast responses with OpenAI',
-      chatProvider: 'openai',
-      imageProvider: 'openai',
-      icon: 'zap',
       capabilities: {
         chat: true,
         image: true
@@ -55,7 +43,7 @@ export class UnifiedProviderService {
   }
 
   static getDefaultProvider(): UnifiedProvider {
-    return this.providers[0]; // Enhanced mode as default
+    return this.providers[0]; // Grok as the only provider
   }
 
   static setDefaultProvider(id: string): void {
@@ -66,7 +54,6 @@ export class UnifiedProviderService {
   }
 
   static getSavedProvider(): UnifiedProvider {
-    const saved = localStorage.getItem('preferredUnifiedProvider');
-    return saved ? this.getProvider(saved) || this.getDefaultProvider() : this.getDefaultProvider();
+    return this.getDefaultProvider(); // Always return Grok
   }
 }

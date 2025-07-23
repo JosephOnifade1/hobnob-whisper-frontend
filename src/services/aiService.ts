@@ -1,11 +1,9 @@
 
-import { ChatService } from './chatService';
-import { DeepSeekService } from './deepseekService';
 import { GrokService } from './grokService';
 import { GuestChatService } from './guestChatService';
 import { UnifiedProviderService } from './unifiedProviderService';
 
-export type AIProvider = 'openai' | 'deepseek' | 'grok';
+export type AIProvider = 'grok';
 
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system';
@@ -40,51 +38,34 @@ export interface AIServiceOptions {
 
 export class AIService {
   static setDefaultProvider(providerId: string): void {
-    UnifiedProviderService.setDefaultProvider(providerId);
+    // No-op since we only have one provider
   }
 
   static getDefaultProvider(): AIProvider {
-    const unifiedProvider = UnifiedProviderService.getSavedProvider();
-    return unifiedProvider.chatProvider as AIProvider;
+    return 'grok';
   }
 
   static getDefaultProviderId(): string {
-    return UnifiedProviderService.getSavedProvider().id;
+    return 'grok';
   }
 
   static async sendMessage(
     messages: AIMessage[],
     options: AIServiceOptions = {}
   ): Promise<AIResponse> {
-    // For guest users, always use Lightning Mode (openai)
-    let chatProvider: AIProvider;
-    
-    if (options.isGuest) {
-      chatProvider = 'openai';
-    } else {
-      const unifiedProvider = options.providerId 
-        ? UnifiedProviderService.getProvider(options.providerId)
-        : UnifiedProviderService.getSavedProvider();
-      
-      chatProvider = unifiedProvider?.chatProvider as AIProvider || 'openai';
-    }
+    // Always use Grok for authenticated users, guest service for guests
+    const chatProvider: AIProvider = 'grok';
     
     try {
-      console.log(`Processing message with ${chatProvider === 'grok' ? 'Enhanced Mode (Grok)' : chatProvider === 'openai' ? 'Lightning Mode (OpenAI)' : 'DeepSeek'}`);
+      console.log('Processing message with Grok AI');
       
       let response;
       if (options.isGuest) {
-        // For guest users, use the guest chat service with Lightning Mode
+        // For guest users, use the guest chat service (which uses OpenAI internally but we'll update it)
         response = await GuestChatService.sendMessage(messages);
       } else {
-        // For authenticated users, route based on the selected provider
-        if (chatProvider === 'grok') {
-          response = await GrokService.sendMessage(messages, options);
-        } else if (chatProvider === 'deepseek') {
-          response = await DeepSeekService.sendMessage(messages, options);
-        } else {
-          response = await ChatService.sendMessage(messages, options);
-        }
+        // For authenticated users, always use Grok
+        response = await GrokService.sendMessage(messages, options);
       }
 
       return {
@@ -92,31 +73,7 @@ export class AIService {
         provider: chatProvider,
       };
     } catch (error) {
-      console.error(`Error with ${chatProvider === 'grok' ? 'Enhanced Mode (Grok)' : chatProvider === 'openai' ? 'Lightning Mode (OpenAI)' : 'DeepSeek'}:`, error);
-      
-      // Try fallback capability if the primary one fails (only for authenticated users)
-      if (!options.isGuest) {
-        const fallbackProvider: AIProvider = chatProvider === 'grok' ? 'openai' : 'grok';
-        const fallbackMode = fallbackProvider === 'grok' ? 'Enhanced Mode (Grok)' : 'Lightning Mode (OpenAI)';
-        console.log(`Attempting fallback to ${fallbackMode}`);
-        
-        try {
-          let fallbackResponse;
-          if (fallbackProvider === 'grok') {
-            fallbackResponse = await GrokService.sendMessage(messages, options);
-          } else {
-            fallbackResponse = await ChatService.sendMessage(messages, options);
-          }
-          
-          return {
-            ...fallbackResponse,
-            provider: fallbackProvider,
-          };
-        } catch (fallbackError) {
-          console.error(`Fallback to ${fallbackMode} also failed:`, fallbackError);
-        }
-      }
-      
+      console.error('Error with Grok AI:', error);
       throw error;
     }
   }
@@ -125,13 +82,8 @@ export class AIService {
     return [
       {
         value: 'grok',
-        label: 'Enhanced Mode',
-        description: 'Advanced creativity with Grok AI'
-      },
-      {
-        value: 'openai',
-        label: 'Lightning Mode',
-        description: 'Fast responses with OpenAI'
+        label: 'Grok AI',
+        description: 'Advanced AI powered by Grok'
       }
     ];
   }

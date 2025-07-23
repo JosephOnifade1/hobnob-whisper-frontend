@@ -83,32 +83,6 @@ function analyzeImageIntent(message: string) {
   };
 }
 
-async function generateImageWithOpenAI(prompt: string) {
-  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-  const response = await fetch('https://api.openai.com/v1/images/generations', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openAIApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-image-1',
-      prompt: prompt,
-      n: 1,
-      size: '1024x1024',
-      quality: 'high',
-      output_format: 'png'
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`OpenAI Image API error: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return data.data[0].b64_json;
-}
-
 async function generateImageWithGrok(prompt: string) {
   const xaiApiKey = Deno.env.get('XAI_API_KEY');
   const response = await fetch('https://api.x.ai/v1/chat/completions', {
@@ -156,14 +130,13 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, conversationId, userId, isGuest = false, provider = 'openai' } = await req.json();
+    const { messages, conversationId, userId, isGuest = false } = await req.json();
     
-    console.log('Chat completion request:', { 
+    console.log('Chat completion request (Grok only):', { 
       messageCount: messages?.length, 
       conversationId, 
       userId,
-      isGuest,
-      provider 
+      isGuest
     });
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -177,18 +150,9 @@ serve(async (req) => {
     console.log('Image intent analysis:', imageIntent);
 
     // Get API keys
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    const deepSeekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
     const xaiApiKey = Deno.env.get('XAI_API_KEY');
 
-    // Validate API key based on provider
-    if (provider === 'openai' && !openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
-    }
-    if (provider === 'deepseek' && !deepSeekApiKey) {
-      throw new Error('DeepSeek API key not configured');
-    }
-    if (provider === 'grok' && !xaiApiKey) {
+    if (!xaiApiKey) {
       throw new Error('Grok API key not configured');
     }
 
@@ -224,22 +188,9 @@ serve(async (req) => {
     let generatedImageData = null;
     if (imageIntent?.hasImageIntent && imageIntent.confidence > 0.5 && !isGuest && supabase && user) {
       try {
-        console.log(`Generating image with prompt: "${imageIntent.imagePrompt}" using ${provider === 'grok' ? 'Grok' : 'OpenAI'}`);
+        console.log(`Generating image with prompt: "${imageIntent.imagePrompt}" using Grok`);
         
-        let base64Data;
-        let imageProvider;
-        
-        if (provider === 'grok' && xaiApiKey) {
-          // Use Grok for Enhanced Mode
-          base64Data = await generateImageWithGrok(imageIntent.imagePrompt);
-          imageProvider = 'grok';
-        } else if (openAIApiKey) {
-          // Use OpenAI for Lightning Mode or fallback
-          base64Data = await generateImageWithOpenAI(imageIntent.imagePrompt);
-          imageProvider = 'openai';
-        } else {
-          throw new Error('No image generation API available');
-        }
+        const base64Data = await generateImageWithGrok(imageIntent.imagePrompt);
 
         // Create image generation record
         const { data: generation, error: generationError } = await supabase
@@ -289,7 +240,7 @@ serve(async (req) => {
                 imageUrl: signedUrl.signedUrl,
                 downloadUrl: signedUrl.signedUrl,
                 prompt: imageIntent.imagePrompt,
-                provider: imageProvider,
+                provider: 'grok',
                 generationId: generation.id
               };
               console.log('Image generated successfully:', generatedImageData);
@@ -324,89 +275,47 @@ serve(async (req) => {
       }
     }
 
-    // Call appropriate AI API for text response
-    console.log(`Calling ${provider} API for text response...`);
-    let aiResponse;
-    let aiMessage;
-
-    if (provider === 'grok') {
-      console.log('Using Grok API with model grok-beta');
-      aiResponse = await fetch('https://api.x.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${xaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'grok-beta',
-          messages: processedMessages,
-          max_tokens: 2000,
-          temperature: 0.7,
-        }),
-      });
-    } else if (provider === 'deepseek') {
-      console.log('Using DeepSeek API with model deepseek-reasoner');
-      aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${deepSeekApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'deepseek-reasoner',
-          messages: processedMessages,
-          max_tokens: 2000,
-          temperature: 0.7,
-        }),
-      });
-    } else {
-      console.log('Using OpenAI API with model gpt-4.1-2025-04-14');
-      aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4.1-2025-04-14',
-          messages: processedMessages,
-          max_tokens: 1000,
-          temperature: 0.7,
-        }),
-      });
-    }
+    // Call Grok API for text response
+    console.log('Using Grok API with model grok-beta');
+    const aiResponse = await fetch('https://api.x.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${xaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'grok-beta',
+        messages: processedMessages,
+        max_tokens: 2000,
+        temperature: 0.7,
+      }),
+    });
 
     if (!aiResponse.ok) {
       const errorData = await aiResponse.json().catch(() => ({}));
-      console.error(`${provider} API error:`, { status: aiResponse.status, statusText: aiResponse.statusText, errorData });
+      console.error('Grok API error:', { status: aiResponse.status, statusText: aiResponse.statusText, errorData });
       
       if (aiResponse.status === 401) {
-        if (provider === 'grok') {
-          throw new Error('Grok API key is invalid or expired. Please check your API key configuration.');
-        } else if (provider === 'deepseek') {
-          throw new Error('DeepSeek API key is invalid or expired. Please check your API key configuration.');
-        } else if (provider === 'openai') {
-          throw new Error('OpenAI API key is invalid or expired. Please check your API key configuration.');
-        }
+        throw new Error('Grok API key is invalid or expired. Please check your API key configuration.');
       }
       
-      throw new Error(errorData.error?.message || `${provider} API error: ${aiResponse.status} - ${aiResponse.statusText}`);
+      throw new Error(errorData.error?.message || `Grok API error: ${aiResponse.status} - ${aiResponse.statusText}`);
     }
 
     const data = await aiResponse.json();
-    aiMessage = data.choices[0]?.message?.content;
+    const aiMessage = data.choices[0]?.message?.content;
 
     if (!aiMessage) {
-      throw new Error(`No response generated from ${provider}`);
+      throw new Error('No response generated from Grok');
     }
 
-    console.log(`${provider} response received successfully`);
+    console.log('Grok response received successfully');
 
     // Combine response with image data if available
     const response = {
       message: aiMessage,
       usage: data.usage,
-      provider: provider,
+      provider: 'grok',
       isGuest,
       generatedImage: generatedImageData
     };
