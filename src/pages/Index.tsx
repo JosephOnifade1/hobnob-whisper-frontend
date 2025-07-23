@@ -51,7 +51,7 @@ const Index = () => {
   const [isRestoringState, setIsRestoringState] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [showGuestMode, setShowGuestMode] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<AIProvider>(AIService.getDefaultProvider());
+  const [selectedProvider, setSelectedProvider] = useState<string>(AIService.getDefaultProviderId());
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
@@ -143,14 +143,16 @@ const Index = () => {
     scrollToBottom(true);
   }, [scrollToBottom]);
 
-  const handleProviderChange = (provider: AIProvider) => {
-    setSelectedProvider(provider);
-    AIService.setDefaultProvider(provider);
-    const capabilityName = provider === 'openai' ? 'Enhanced Mode' : 'Lightning Mode';
-    toast({
-      title: "AI Capability Changed",
-      description: `Switched to ${capabilityName} for optimized performance`
-    });
+  const handleProviderChange = (providerId: string) => {
+    setSelectedProvider(providerId);
+    AIService.setDefaultProvider(providerId);
+    const provider = AIService.getProvider(providerId);
+    if (provider) {
+      toast({
+        title: "AI Mode Changed",
+        description: `Switched to ${provider.name} for optimized performance`
+      });
+    }
   };
 
   useEffect(() => {
@@ -226,12 +228,12 @@ const Index = () => {
         messageCount: chatMessages.length,
         currentChatId,
         isRetry,
-        provider: selectedProvider
+        providerId: selectedProvider
       });
       const response = await AIService.sendMessage(chatMessages, {
         conversationId: currentChatId,
         userId: user.id,
-        provider: selectedProvider
+        providerId: selectedProvider
       });
       await ChatService.saveMessage(currentChatId, 'assistant', response.message);
       if (conversationHistory.length === 0 && !isRetry) {
@@ -276,7 +278,8 @@ const Index = () => {
         provider: response.provider
       });
       if (isRetry) {
-        const capabilityName = response.provider === 'openai' ? 'Enhanced Mode' : 'Lightning Mode';
+        const provider = AIService.getProvider(selectedProvider);
+        const capabilityName = provider?.name || 'AI';
         toast({
           title: "Success!",
           description: `Message sent successfully using ${capabilityName}.`
