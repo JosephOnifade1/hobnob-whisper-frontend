@@ -62,16 +62,13 @@ const Index = () => {
     if (!force && userScrolledUp) return;
     
     if (lastMessageRef.current && chatContainerRef.current) {
-      // Calculate the proper scroll position accounting for fixed elements
       const container = chatContainerRef.current;
       const lastMessage = lastMessageRef.current;
       
-      // Get the container's current scroll info
       const containerRect = container.getBoundingClientRect();
       const messageRect = lastMessage.getBoundingClientRect();
       
-      // Calculate if we need to scroll
-      const isMessageVisible = messageRect.bottom <= containerRect.bottom - 40; // 40px buffer
+      const isMessageVisible = messageRect.bottom <= containerRect.bottom - 40;
       
       if (!isMessageVisible || force) {
         setTimeout(() => {
@@ -85,7 +82,6 @@ const Index = () => {
     }
   }, [userScrolledUp]);
 
-  // Set up scroll position monitoring
   useEffect(() => {
     const container = chatContainerRef.current;
     if (!container) return;
@@ -94,7 +90,6 @@ const Index = () => {
       const { scrollTop, scrollHeight, clientHeight } = container;
       const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
       
-      // Consider user has scrolled up if they're more than 100px from bottom
       setUserScrolledUp(distanceFromBottom > 100);
     };
 
@@ -102,7 +97,6 @@ const Index = () => {
     return () => container.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Set up intersection observer for auto-scroll detection
   useEffect(() => {
     if (!lastMessageRef.current || !chatContainerRef.current) return;
 
@@ -115,7 +109,7 @@ const Index = () => {
       },
       {
         root: chatContainerRef.current,
-        rootMargin: '0px 0px -100px 0px', // 100px margin from bottom
+        rootMargin: '0px 0px -100px 0px',
         threshold: 0.1
       }
     );
@@ -130,7 +124,6 @@ const Index = () => {
     };
   }, [messages.length, userScrolledUp]);
 
-  // Auto-scroll when messages change or typing status changes
   useEffect(() => {
     const timer = setTimeout(() => {
       scrollToBottom();
@@ -138,7 +131,6 @@ const Index = () => {
     return () => clearTimeout(timer);
   }, [messages, isTyping, scrollToBottom]);
 
-  // Force scroll to bottom when user sends a message
   const forceScrollToBottom = useCallback(() => {
     setUserScrolledUp(false);
     scrollToBottom(true);
@@ -245,13 +237,24 @@ const Index = () => {
         await ChatService.updateConversationTitle(currentChatId, title);
         console.log('Updated conversation title to:', title);
       }
+      
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
         content: response.message,
         role: 'assistant',
         timestamp: new Date(),
-        provider: response.provider
+        provider: response.provider,
+        attachments: response.generatedImage ? [{
+          type: 'generated-image',
+          url: response.generatedImage.imageUrl,
+          downloadUrl: response.generatedImage.downloadUrl,
+          prompt: response.generatedImage.prompt,
+          provider: response.generatedImage.provider,
+          generationId: response.generatedImage.generationId,
+          name: `Generated: ${response.generatedImage.prompt.substring(0, 30)}...`
+        }] : undefined
       };
+      
       setMessages(prev => {
         if (isRetry) {
           return [...prev.slice(0, -1), aiMessage];
@@ -276,7 +279,8 @@ const Index = () => {
       console.log('Hobnob AI response received successfully:', {
         length: response.message.length,
         usage: response.usage,
-        provider: response.provider
+        provider: response.provider,
+        hasGeneratedImage: !!response.generatedImage
       });
       if (isRetry) {
         const provider = UnifiedProviderService.getProvider(selectedProvider);
@@ -284,6 +288,15 @@ const Index = () => {
         toast({
           title: "Success!",
           description: `Message sent successfully using ${capabilityName}.`
+        });
+      }
+      
+      if (response.generatedImage) {
+        const provider = UnifiedProviderService.getProvider(selectedProvider);
+        const imageModeText = provider?.id === 'lightning' ? 'Grok' : 'OpenAI';
+        toast({
+          title: "Image Generated!",
+          description: `Successfully created image using ${imageModeText}. You can download it from the chat.`
         });
       }
     } catch (error) {
@@ -333,10 +346,8 @@ const Index = () => {
   const handleSendMessage = async (content: string, attachments?: any[]) => {
     if (isSendingMessage) return;
     
-    // Force scroll to bottom when user sends a message
     forceScrollToBottom();
     
-    // Process attachments to include metadata
     const processedAttachments = attachments ? attachments.map(attachment => ({
       ...attachment,
       timestamp: new Date().toISOString(),
@@ -523,7 +534,6 @@ const Index = () => {
       />
 
       <div className="flex-1 flex flex-col">
-        {/* Header */}
         <div className="glass-card border-b border-border/50 backdrop-blur-xl">
           <div className={`p-4 ${isMobile ? 'px-4 py-3' : 'lg:p-6'}`}>
             <div className="flex items-center justify-between">
@@ -573,7 +583,6 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Chat Messages Container */}
         <div 
           ref={chatContainerRef} 
           className="flex-1 overflow-y-auto scroll-smooth-mobile"
@@ -594,7 +603,7 @@ const Index = () => {
                   <div className="space-y-3">
                     <h2 className="text-2xl font-bold text-gradient">Start a conversation</h2>
                     <p className="text-muted-foreground leading-relaxed">
-                      Ask me anything! I'm Hobnob AI, your intelligent assistant ready to help with any task.
+                      Ask me anything! I'm Hobnob AI, your intelligent assistant ready to help with any task. You can even ask me to generate images for you!
                     </p>
                   </div>
                   {!isMobile && (
@@ -652,7 +661,6 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Scroll to Bottom Button */}
         {userScrolledUp && (
           <button
             onClick={forceScrollToBottom}

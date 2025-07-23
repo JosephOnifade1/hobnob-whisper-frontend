@@ -11,6 +11,14 @@ export interface AIMessage {
   content: string;
 }
 
+export interface GeneratedImageData {
+  imageUrl: string;
+  downloadUrl: string;
+  prompt: string;
+  provider: string;
+  generationId: string;
+}
+
 export interface AIResponse {
   message: string;
   usage?: {
@@ -19,6 +27,7 @@ export interface AIResponse {
     total_tokens: number;
   };
   provider: AIProvider;
+  generatedImage?: GeneratedImageData;
 }
 
 export interface AIServiceOptions {

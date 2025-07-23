@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { GeneratedImageData } from './aiService';
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -12,6 +13,7 @@ export interface ChatResponse {
     completion_tokens: number;
     total_tokens: number;
   };
+  generatedImage?: GeneratedImageData;
 }
 
 export interface ChatServiceOptions {
@@ -52,6 +54,7 @@ export class ChatService {
       return {
         message: data.message || '',
         usage: data.usage,
+        generatedImage: data.generatedImage,
       };
     } catch (error) {
       console.error('ChatService error:', error);
