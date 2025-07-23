@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { TouchButton } from '@/components/ui/touch-button';
@@ -148,11 +147,12 @@ const ChatInput: React.FC<ChatInputProps> = ({
     });
   };
 
-  const handleImageGenerated = (imageUrl: string, prompt: string) => {
+  const handleImageGenerated = (imageUrl: string, prompt: string, downloadUrl?: string) => {
     const imageAttachment = {
       type: 'generated-image',
       url: imageUrl,
       prompt: prompt,
+      downloadUrl: downloadUrl,
       name: `Generated: ${prompt.substring(0, 50)}...`,
       uploadStatus: 'completed'
     };

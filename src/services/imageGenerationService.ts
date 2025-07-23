@@ -5,6 +5,7 @@ export interface ImageGenerationRequest {
   prompt: string;
   conversationId: string;
   messageId?: string;
+  provider?: 'openai' | 'grok';
 }
 
 export interface ImageGenerationResponse {
@@ -12,19 +13,22 @@ export interface ImageGenerationResponse {
   imageUrl?: string;
   generationId?: string;
   prompt?: string;
+  provider?: string;
+  downloadUrl?: string;
   error?: string;
 }
 
 export class ImageGenerationService {
   static async generateImage(request: ImageGenerationRequest): Promise<ImageGenerationResponse> {
     try {
-      console.log('Generating image with prompt:', request.prompt);
+      console.log('Generating image with prompt:', request.prompt, 'Provider:', request.provider);
       
       const { data, error } = await supabase.functions.invoke('image-generation', {
         body: {
           prompt: request.prompt,
           conversationId: request.conversationId,
-          messageId: request.messageId
+          messageId: request.messageId,
+          provider: request.provider || 'openai'
         }
       });
 
@@ -47,7 +51,9 @@ export class ImageGenerationService {
         success: true,
         imageUrl: data.imageUrl,
         generationId: data.generationId,
-        prompt: data.prompt
+        prompt: data.prompt,
+        provider: data.provider,
+        downloadUrl: data.downloadUrl
       };
 
     } catch (error) {
@@ -56,6 +62,25 @@ export class ImageGenerationService {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred'
       };
+    }
+  }
+
+  static async downloadImage(imageUrl: string, filename: string) {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading image:', error);
+      throw error;
     }
   }
 

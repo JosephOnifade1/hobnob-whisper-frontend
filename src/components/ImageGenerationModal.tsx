@@ -4,14 +4,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Loader2, Image, Sparkles } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2, Image, Sparkles, Brain, Zap } from 'lucide-react';
 import { ImageGenerationService } from '@/services/imageGenerationService';
 import { useToast } from '@/components/ui/use-toast';
 
 interface ImageGenerationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImageGenerated: (imageUrl: string, prompt: string) => void;
+  onImageGenerated: (imageUrl: string, prompt: string, downloadUrl?: string) => void;
   conversationId: string;
   messageId?: string;
 }
@@ -24,6 +25,7 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
   messageId
 }) => {
   const [prompt, setPrompt] = useState('');
+  const [provider, setProvider] = useState<'openai' | 'grok'>('openai');
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
 
@@ -43,16 +45,17 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
       const response = await ImageGenerationService.generateImage({
         prompt: prompt.trim(),
         conversationId,
-        messageId
+        messageId,
+        provider
       });
 
       if (response.success && response.imageUrl) {
-        onImageGenerated(response.imageUrl, prompt.trim());
+        onImageGenerated(response.imageUrl, prompt.trim(), response.downloadUrl);
         setPrompt('');
         onClose();
         toast({
           title: "Success",
-          description: "Image generated successfully!"
+          description: `Image generated successfully with ${provider === 'grok' ? 'Grok' : 'OpenAI'}!`
         });
       } else {
         toast({
@@ -91,6 +94,29 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         </DialogHeader>
         
         <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="provider">AI Provider</Label>
+            <Select value={provider} onValueChange={(value: 'openai' | 'grok') => setProvider(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select AI provider" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="openai">
+                  <div className="flex items-center gap-2">
+                    <Brain className="h-4 w-4" />
+                    <span>OpenAI (GPT-Image)</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="grok">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4" />
+                    <span>Grok (xAI)</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="prompt">Image Prompt</Label>
             <Textarea

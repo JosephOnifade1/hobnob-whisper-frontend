@@ -8,6 +8,73 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+async function generateWithOpenAI(prompt: string) {
+  const response = await fetch('https://api.openai.com/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-image-1',
+      prompt: prompt,
+      n: 1,
+      size: '1024x1024',
+      quality: 'high',
+      output_format: 'png'
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI API error: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.data[0].b64_json;
+}
+
+async function generateWithGrok(prompt: string) {
+  const response = await fetch('https://api.x.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${Deno.env.get('XAI_API_KEY')}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'grok-vision-beta',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `Generate a high-quality image based on this prompt: ${prompt}. Return the image in base64 format.`
+            }
+          ]
+        }
+      ],
+      stream: false,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`xAI API error: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  
+  // Extract base64 image from response
+  const content = data.choices[0].message.content;
+  const base64Match = content.match(/data:image\/[^;]+;base64,([^"]+)/);
+  
+  if (!base64Match) {
+    throw new Error('No valid base64 image found in response');
+  }
+  
+  return base64Match[1];
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -30,7 +97,7 @@ serve(async (req) => {
       });
     }
 
-    const { prompt, conversationId, messageId } = await req.json();
+    const { prompt, conversationId, messageId, provider = 'openai' } = await req.json();
 
     if (!prompt || !conversationId) {
       return new Response(JSON.stringify({ error: 'Prompt and conversation ID are required' }), {
@@ -61,32 +128,16 @@ serve(async (req) => {
     }
 
     try {
-      // Generate image with OpenAI
-      const openaiResponse = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-image-1',
-          prompt: prompt,
-          n: 1,
-          size: '1024x1024',
-          quality: 'high',
-          output_format: 'png'
-        }),
-      });
-
-      if (!openaiResponse.ok) {
-        throw new Error(`OpenAI API error: ${openaiResponse.statusText}`);
+      console.log(`Generating image with ${provider} provider`);
+      
+      let base64Data;
+      if (provider === 'grok') {
+        base64Data = await generateWithGrok(prompt);
+      } else {
+        base64Data = await generateWithOpenAI(prompt);
       }
 
-      const openaiData = await openaiResponse.json();
-      const imageData = openaiData.data[0];
-
       // Convert base64 to blob
-      const base64Data = imageData.b64_json;
       const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
       
       // Generate unique filename
@@ -129,7 +180,9 @@ serve(async (req) => {
         success: true,
         imageUrl: signedUrl?.signedUrl,
         generationId: generation.id,
-        prompt: prompt
+        prompt: prompt,
+        provider: provider,
+        downloadUrl: signedUrl?.signedUrl
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
