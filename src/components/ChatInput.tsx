@@ -22,12 +22,14 @@ interface ChatInputProps {
   onSendMessage: (message: string, attachments?: any[]) => void;
   disabled?: boolean;
   conversationId?: string;
+  providerId?: string;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({ 
   onSendMessage, 
   disabled = false,
-  conversationId 
+  conversationId,
+  providerId
 }) => {
   const [message, setMessage] = useState('');
   const [attachments, setAttachments] = useState<any[]>([]);
@@ -321,6 +323,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
         onClose={() => setShowImageModal(false)}
         onImageGenerated={handleImageGenerated}
         conversationId={conversationId || ''}
+        providerId={providerId}
       />
     </>
   );

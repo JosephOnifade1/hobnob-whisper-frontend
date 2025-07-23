@@ -1,11 +1,11 @@
-
 import { supabase } from '@/integrations/supabase/client';
+import { UnifiedProviderService } from './unifiedProviderService';
 
 export interface ImageGenerationRequest {
   prompt: string;
   conversationId: string;
   messageId?: string;
-  provider?: 'openai' | 'grok';
+  providerId?: string;
 }
 
 export interface ImageGenerationResponse {
@@ -21,14 +21,21 @@ export interface ImageGenerationResponse {
 export class ImageGenerationService {
   static async generateImage(request: ImageGenerationRequest): Promise<ImageGenerationResponse> {
     try {
-      console.log('Generating image with prompt:', request.prompt, 'Provider:', request.provider);
+      // Use unified provider selection
+      const unifiedProvider = request.providerId 
+        ? UnifiedProviderService.getProvider(request.providerId)
+        : UnifiedProviderService.getSavedProvider();
+      
+      const imageProvider = unifiedProvider?.imageProvider || 'openai';
+      
+      console.log('Generating image with prompt:', request.prompt, 'Provider:', imageProvider);
       
       const { data, error } = await supabase.functions.invoke('image-generation', {
         body: {
           prompt: request.prompt,
           conversationId: request.conversationId,
           messageId: request.messageId,
-          provider: request.provider || 'openai'
+          provider: imageProvider
         }
       });
 

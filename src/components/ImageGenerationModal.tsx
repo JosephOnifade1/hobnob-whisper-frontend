@@ -4,9 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Image, Sparkles, Brain, Zap } from 'lucide-react';
+import { Loader2, Image, Sparkles } from 'lucide-react';
 import { ImageGenerationService } from '@/services/imageGenerationService';
+import { UnifiedProviderService } from '@/services/unifiedProviderService';
 import { useToast } from '@/components/ui/use-toast';
 
 interface ImageGenerationModalProps {
@@ -15,6 +15,7 @@ interface ImageGenerationModalProps {
   onImageGenerated: (imageUrl: string, prompt: string, downloadUrl?: string) => void;
   conversationId: string;
   messageId?: string;
+  providerId?: string;
 }
 
 export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
@@ -22,12 +23,19 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
   onClose,
   onImageGenerated,
   conversationId,
-  messageId
+  messageId,
+  providerId
 }) => {
   const [prompt, setPrompt] = useState('');
-  const [provider, setProvider] = useState<'openai' | 'grok'>('openai');
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
+
+  const unifiedProvider = providerId 
+    ? UnifiedProviderService.getProvider(providerId)
+    : UnifiedProviderService.getSavedProvider();
+  
+  const imageProvider = unifiedProvider?.imageProvider || 'openai';
+  const providerName = imageProvider === 'openai' ? 'OpenAI' : 'Grok';
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -46,7 +54,7 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         prompt: prompt.trim(),
         conversationId,
         messageId,
-        provider
+        providerId
       });
 
       if (response.success && response.imageUrl) {
@@ -55,7 +63,7 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         onClose();
         toast({
           title: "Success",
-          description: `Image generated successfully with ${provider === 'grok' ? 'Grok' : 'OpenAI'}!`
+          description: `Image generated successfully with ${providerName}!`
         });
       } else {
         toast({
@@ -94,27 +102,14 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         </DialogHeader>
         
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="provider">AI Provider</Label>
-            <Select value={provider} onValueChange={(value: 'openai' | 'grok') => setProvider(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select AI provider" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="openai">
-                  <div className="flex items-center gap-2">
-                    <Brain className="h-4 w-4" />
-                    <span>OpenAI (GPT-Image)</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="grok">
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4" />
-                    <span>Grok (xAI)</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="bg-muted/50 rounded-lg p-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <span>Using:</span>
+                <span className="font-medium text-foreground">{unifiedProvider?.name}</span>
+                <span>({providerName})</span>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-2">

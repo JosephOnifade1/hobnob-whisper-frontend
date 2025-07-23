@@ -2,6 +2,7 @@
 import { ChatService } from './chatService';
 import { DeepSeekService } from './deepseekService';
 import { GuestChatService } from './guestChatService';
+import { UnifiedProviderService } from './unifiedProviderService';
 
 export type AIProvider = 'openai' | 'deepseek';
 
@@ -24,20 +25,21 @@ export interface AIServiceOptions {
   conversationId?: string;
   userId?: string;
   isGuest?: boolean;
-  provider?: AIProvider;
+  providerId?: string;
 }
 
 export class AIService {
-  private static defaultProvider: AIProvider = 'openai';
-
-  static setDefaultProvider(provider: AIProvider): void {
-    this.defaultProvider = provider;
-    localStorage.setItem('preferredAIProvider', provider);
+  static setDefaultProvider(providerId: string): void {
+    UnifiedProviderService.setDefaultProvider(providerId);
   }
 
   static getDefaultProvider(): AIProvider {
-    const saved = localStorage.getItem('preferredAIProvider') as AIProvider;
-    return saved || this.defaultProvider;
+    const unifiedProvider = UnifiedProviderService.getSavedProvider();
+    return unifiedProvider.chatProvider;
+  }
+
+  static getDefaultProviderId(): string {
+    return UnifiedProviderService.getSavedProvider().id;
   }
 
   static async sendMessage(
@@ -45,16 +47,26 @@ export class AIService {
     options: AIServiceOptions = {}
   ): Promise<AIResponse> {
     // For guest users, always use Lightning Mode (deepseek)
-    const provider = options.isGuest ? 'deepseek' : (options.provider || this.getDefaultProvider());
+    let chatProvider: AIProvider;
+    
+    if (options.isGuest) {
+      chatProvider = 'deepseek';
+    } else {
+      const unifiedProvider = options.providerId 
+        ? UnifiedProviderService.getProvider(options.providerId)
+        : UnifiedProviderService.getSavedProvider();
+      
+      chatProvider = unifiedProvider?.chatProvider || 'openai';
+    }
     
     try {
-      console.log(`Processing message with ${provider === 'openai' ? 'Enhanced Mode' : 'Lightning Mode'}`);
+      console.log(`Processing message with ${chatProvider === 'openai' ? 'Enhanced Mode' : 'Lightning Mode'}`);
       
       let response;
       if (options.isGuest) {
         // For guest users, use the guest chat service with Lightning Mode
         response = await GuestChatService.sendMessage(messages);
-      } else if (provider === 'deepseek') {
+      } else if (chatProvider === 'deepseek') {
         response = await DeepSeekService.sendMessage(messages, options);
       } else {
         response = await ChatService.sendMessage(messages, options);
@@ -62,14 +74,14 @@ export class AIService {
 
       return {
         ...response,
-        provider,
+        provider: chatProvider,
       };
     } catch (error) {
-      console.error(`Error with ${provider === 'openai' ? 'Enhanced Mode' : 'Lightning Mode'}:`, error);
+      console.error(`Error with ${chatProvider === 'openai' ? 'Enhanced Mode' : 'Lightning Mode'}:`, error);
       
       // Try fallback capability if the primary one fails (only for authenticated users)
       if (!options.isGuest) {
-        const fallbackProvider: AIProvider = provider === 'openai' ? 'deepseek' : 'openai';
+        const fallbackProvider: AIProvider = chatProvider === 'openai' ? 'deepseek' : 'openai';
         const fallbackMode = fallbackProvider === 'openai' ? 'Enhanced Mode' : 'Lightning Mode';
         console.log(`Attempting fallback to ${fallbackMode}`);
         
