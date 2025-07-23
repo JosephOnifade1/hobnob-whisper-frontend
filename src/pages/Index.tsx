@@ -17,6 +17,7 @@ import GuestMode from '@/components/GuestMode';
 import ModelSelector from '@/components/ModelSelector';
 import { ChatService, type ChatMessage as ServiceChatMessage } from '@/services/chatService';
 import { AIService, AIProvider } from '@/services/aiService';
+import { UnifiedProviderService } from '@/services/unifiedProviderService';
 
 interface Message {
   id: string;
@@ -146,7 +147,7 @@ const Index = () => {
   const handleProviderChange = (providerId: string) => {
     setSelectedProvider(providerId);
     AIService.setDefaultProvider(providerId);
-    const provider = AIService.getProvider(providerId);
+    const provider = UnifiedProviderService.getProvider(providerId);
     if (provider) {
       toast({
         title: "AI Mode Changed",
@@ -278,7 +279,7 @@ const Index = () => {
         provider: response.provider
       });
       if (isRetry) {
-        const provider = AIService.getProvider(selectedProvider);
+        const provider = UnifiedProviderService.getProvider(selectedProvider);
         const capabilityName = provider?.name || 'AI';
         toast({
           title: "Success!",
