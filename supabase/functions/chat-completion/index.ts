@@ -8,7 +8,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Image intent detection logic (copied from frontend service)
+// Image intent detection logic
 const imageKeywords = [
   'generate an image', 'create an image', 'make an image', 'draw an image',
   'generate a picture', 'create a picture', 'make a picture', 'draw a picture',
@@ -330,6 +330,7 @@ serve(async (req) => {
     let aiMessage;
 
     if (provider === 'grok') {
+      console.log('Using Grok API with model grok-beta');
       aiResponse = await fetch('https://api.x.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -344,6 +345,7 @@ serve(async (req) => {
         }),
       });
     } else if (provider === 'deepseek') {
+      console.log('Using DeepSeek API with model deepseek-reasoner');
       aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -358,6 +360,7 @@ serve(async (req) => {
         }),
       });
     } else {
+      console.log('Using OpenAI API with model gpt-4.1-2025-04-14');
       aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -365,7 +368,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-4.1-2025-04-14',
           messages: processedMessages,
           max_tokens: 1000,
           temperature: 0.7,

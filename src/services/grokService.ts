@@ -28,12 +28,12 @@ export class GrokService {
     options: GrokServiceOptions = {}
   ): Promise<GrokResponse> {
     try {
-      console.log('Sending message to Grok service:', { messages: messages.length, options });
+      console.log('Sending message to Grok service (Enhanced Mode):', { messages: messages.length, options });
       
       const { data, error } = await supabase.functions.invoke('chat-completion', {
         body: {
           messages,
-          provider: 'grok',
+          provider: 'grok', // Explicitly set to grok
           conversationId: options.conversationId,
           userId: options.userId,
         },

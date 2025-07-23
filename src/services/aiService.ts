@@ -76,12 +76,15 @@ export class AIService {
       if (options.isGuest) {
         // For guest users, use the guest chat service with Lightning Mode
         response = await GuestChatService.sendMessage(messages);
-      } else if (chatProvider === 'grok') {
-        response = await GrokService.sendMessage(messages, options);
-      } else if (chatProvider === 'deepseek') {
-        response = await DeepSeekService.sendMessage(messages, options);
       } else {
-        response = await ChatService.sendMessage(messages, options);
+        // For authenticated users, route based on the selected provider
+        if (chatProvider === 'grok') {
+          response = await GrokService.sendMessage(messages, options);
+        } else if (chatProvider === 'deepseek') {
+          response = await DeepSeekService.sendMessage(messages, options);
+        } else {
+          response = await ChatService.sendMessage(messages, options);
+        }
       }
 
       return {
