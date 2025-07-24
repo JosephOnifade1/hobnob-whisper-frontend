@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import type { GeneratedImageData } from './aiService';
 
 export interface GrokMessage {
   role: 'user' | 'assistant' | 'system';
@@ -14,7 +13,6 @@ export interface GrokResponse {
     completion_tokens: number;
     total_tokens: number;
   };
-  generatedImage?: GeneratedImageData;
 }
 
 export interface GrokServiceOptions {
@@ -55,7 +53,6 @@ export class GrokService {
       return {
         message: data.message || '',
         usage: data.usage,
-        generatedImage: data.generatedImage,
       };
     } catch (error) {
       console.error('GrokService error:', error);

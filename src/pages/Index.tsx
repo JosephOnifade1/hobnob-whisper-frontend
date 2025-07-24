@@ -244,15 +244,6 @@ const Index = () => {
         role: 'assistant',
         timestamp: new Date(),
         provider: response.provider,
-        attachments: response.generatedImage ? [{
-          type: 'generated-image',
-          url: response.generatedImage.imageUrl,
-          downloadUrl: response.generatedImage.downloadUrl,
-          prompt: response.generatedImage.prompt,
-          provider: response.generatedImage.provider,
-          generationId: response.generatedImage.generationId,
-          name: `Generated: ${response.generatedImage.prompt.substring(0, 30)}...`
-        }] : undefined
       };
       
       setMessages(prev => {
@@ -280,7 +271,6 @@ const Index = () => {
         length: response.message.length,
         usage: response.usage,
         provider: response.provider,
-        hasGeneratedImage: !!response.generatedImage
       });
       if (isRetry) {
         const provider = UnifiedProviderService.getProvider(selectedProvider);
@@ -291,14 +281,6 @@ const Index = () => {
         });
       }
       
-      if (response.generatedImage) {
-        const provider = UnifiedProviderService.getProvider(selectedProvider);
-        const imageModeText = provider?.id === 'enhanced' ? 'Grok' : 'OpenAI';
-        toast({
-          title: "Image Generated!",
-          description: `Successfully created image using ${imageModeText}. You can download it from the chat.`
-        });
-      }
     } catch (error) {
       console.error('Error sending message:', error);
       let errorMessage = "I apologize, but I encountered an error. Please try again.";

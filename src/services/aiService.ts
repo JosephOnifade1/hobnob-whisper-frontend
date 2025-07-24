@@ -26,7 +26,6 @@ export interface AIResponse {
     total_tokens: number;
   };
   provider: AIProvider;
-  generatedImage?: GeneratedImageData;
 }
 
 export interface AIServiceOptions {
