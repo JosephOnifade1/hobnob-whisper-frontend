@@ -297,6 +297,12 @@ serve(async (req) => {
       
       if (aiResponse.status === 401) {
         throw new Error('Grok API key is invalid or expired. Please check your API key configuration.');
+      } else if (aiResponse.status === 403) {
+        throw new Error('Access denied to Grok API. Please check your API key permissions and account credits.');
+      } else if (aiResponse.status === 404) {
+        throw new Error('Grok model not found. Please verify the model name and your API access.');
+      } else if (aiResponse.status === 429) {
+        throw new Error('Rate limit exceeded. Please try again later.');
       }
       
       throw new Error(errorData.error?.message || `Grok API error: ${aiResponse.status} - ${aiResponse.statusText}`);

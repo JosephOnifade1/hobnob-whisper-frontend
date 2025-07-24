@@ -16,7 +16,7 @@ interface GuestChatResponse {
 export class GuestChatService {
   static async sendMessage(messages: GuestChatMessage[]): Promise<GuestChatResponse> {
     try {
-      console.log('Sending guest chat request to edge function with DeepSeek');
+      console.log('Sending guest chat request to edge function with Grok');
       
       const response = await fetch('https://mkyvnegyagdfehukmklu.supabase.co/functions/v1/chat-completion', {
         method: 'POST',
@@ -26,7 +26,6 @@ export class GuestChatService {
         },
         body: JSON.stringify({
           messages,
-          provider: 'deepseek', // Always use DeepSeek for guest mode
           isGuest: true,
         }),
       });
