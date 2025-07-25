@@ -6,7 +6,7 @@ export interface UnifiedProvider {
   name: string;
   description: string;
   chatProvider: AIProvider | 'grok';
-  imageProvider: 'openai' | 'grok';
+  imageProvider: 'openai' | 'grok' | 'stability';
   icon: string;
   capabilities: {
     chat: boolean;
@@ -21,10 +21,22 @@ export class UnifiedProviderService {
       name: 'Grok AI',
       description: 'Advanced AI powered by Grok',
       chatProvider: 'grok',
-      imageProvider: 'grok',
+      imageProvider: 'stability',
       icon: 'brain',
       capabilities: {
         chat: true,
+        image: false
+      }
+    },
+    {
+      id: 'stability',
+      name: 'Stability AI',
+      description: 'High-quality image generation powered by Stability AI',
+      chatProvider: 'grok',
+      imageProvider: 'stability',
+      icon: 'image',
+      capabilities: {
+        chat: false,
         image: true
       }
     }

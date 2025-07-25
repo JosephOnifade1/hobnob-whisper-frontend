@@ -33,46 +33,35 @@ async function generateWithOpenAI(prompt: string) {
   return data.data[0].b64_json;
 }
 
-async function generateWithGrok(prompt: string) {
-  const response = await fetch('https://api.x.ai/v1/chat/completions', {
+async function generateWithStability(prompt: string, aspectRatio = '1:1', outputFormat = 'png', model = 'core') {
+  const formData = new FormData();
+  formData.append('prompt', prompt);
+  formData.append('aspect_ratio', aspectRatio);
+  formData.append('output_format', outputFormat);
+  formData.append('model', model);
+
+  const response = await fetch('https://api.stability.ai/v2beta/stable-image/generate/core', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${Deno.env.get('XAI_API_KEY')}`,
-      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${Deno.env.get('STABILITY_API_KEY')}`,
+      'Accept': 'image/*'
     },
-    body: JSON.stringify({
-      model: 'grok-vision-beta',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: `Generate a high-quality image based on this prompt: ${prompt}. Return the image in base64 format.`
-            }
-          ]
-        }
-      ],
-      stream: false,
-      temperature: 0.7,
-    }),
+    body: formData,
   });
 
   if (!response.ok) {
-    throw new Error(`xAI API error: ${response.statusText}`);
+    const errorText = await response.text();
+    console.error('Stability API error:', response.status, errorText);
+    throw new Error(`Stability API error: ${response.status} ${response.statusText}`);
   }
 
-  const data = await response.json();
+  // Response is binary image data
+  const imageData = await response.arrayBuffer();
   
-  // Extract base64 image from response
-  const content = data.choices[0].message.content;
-  const base64Match = content.match(/data:image\/[^;]+;base64,([^"]+)/);
+  // Convert to base64
+  const base64Data = btoa(String.fromCharCode(...new Uint8Array(imageData)));
   
-  if (!base64Match) {
-    throw new Error('No valid base64 image found in response');
-  }
-  
-  return base64Match[1];
+  return base64Data;
 }
 
 serve(async (req) => {
@@ -97,7 +86,7 @@ serve(async (req) => {
       });
     }
 
-    const { prompt, conversationId, messageId, provider = 'openai' } = await req.json();
+    const { prompt, conversationId, messageId, provider = 'stability', aspectRatio, outputFormat, model } = await req.json();
 
     if (!prompt || !conversationId) {
       return new Response(JSON.stringify({ error: 'Prompt and conversation ID are required' }), {
@@ -131,10 +120,12 @@ serve(async (req) => {
       console.log(`Generating image with ${provider} provider`);
       
       let base64Data;
-      if (provider === 'grok') {
-        base64Data = await generateWithGrok(prompt);
-      } else {
+      if (provider === 'stability') {
+        base64Data = await generateWithStability(prompt, aspectRatio, outputFormat, model);
+      } else if (provider === 'openai') {
         base64Data = await generateWithOpenAI(prompt);
+      } else {
+        throw new Error(`Unsupported provider: ${provider}`);
       }
 
       // Convert base64 to blob

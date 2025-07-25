@@ -26,7 +26,7 @@ export class ImageGenerationService {
         ? UnifiedProviderService.getProvider(request.providerId)
         : UnifiedProviderService.getSavedProvider();
       
-      const imageProvider = unifiedProvider?.imageProvider || 'openai';
+      const imageProvider = unifiedProvider?.imageProvider || 'stability';
       
       console.log('Generating image with prompt:', request.prompt, 'Provider:', imageProvider);
       

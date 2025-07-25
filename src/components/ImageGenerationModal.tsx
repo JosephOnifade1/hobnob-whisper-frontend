@@ -34,8 +34,9 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
     ? UnifiedProviderService.getProvider(providerId)
     : UnifiedProviderService.getSavedProvider();
   
-  const imageProvider = unifiedProvider?.imageProvider || 'openai';
-  const providerName = imageProvider === 'openai' ? 'OpenAI' : 'Grok';
+  const imageProvider = unifiedProvider?.imageProvider || 'stability';
+  const providerName = imageProvider === 'openai' ? 'OpenAI' : 
+                      imageProvider === 'stability' ? 'Stability AI' : 'Grok';
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
