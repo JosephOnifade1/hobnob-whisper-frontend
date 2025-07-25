@@ -38,9 +38,16 @@ async function generateWithStability(prompt: string, aspectRatio = '1:1', output
   formData.append('prompt', prompt);
   formData.append('aspect_ratio', aspectRatio);
   formData.append('output_format', outputFormat);
-  formData.append('model', model);
+  
+  // Use the correct endpoint based on model
+  const endpoint = model === 'ultra' 
+    ? 'https://api.stability.ai/v2beta/stable-image/generate/ultra'
+    : 'https://api.stability.ai/v2beta/stable-image/generate/core';
 
-  const response = await fetch('https://api.stability.ai/v2beta/stable-image/generate/core', {
+  console.log(`Using Stability API endpoint: ${endpoint}`);
+  console.log(`Parameters: prompt="${prompt}", aspect_ratio="${aspectRatio}", output_format="${outputFormat}"`);
+
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${Deno.env.get('STABILITY_API_KEY')}`,
@@ -52,11 +59,13 @@ async function generateWithStability(prompt: string, aspectRatio = '1:1', output
   if (!response.ok) {
     const errorText = await response.text();
     console.error('Stability API error:', response.status, errorText);
-    throw new Error(`Stability API error: ${response.status} ${response.statusText}`);
+    console.error('Response headers:', Object.fromEntries(response.headers.entries()));
+    throw new Error(`Stability API error: ${response.status} ${response.statusText} - ${errorText}`);
   }
 
   // Response is binary image data
   const imageData = await response.arrayBuffer();
+  console.log(`Received image data: ${imageData.byteLength} bytes`);
   
   // Convert to base64
   const base64Data = btoa(String.fromCharCode(...new Uint8Array(imageData)));
