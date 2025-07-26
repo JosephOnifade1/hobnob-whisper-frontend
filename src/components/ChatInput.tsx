@@ -323,7 +323,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
         onClose={() => setShowImageModal(false)}
         onImageGenerated={handleImageGenerated}
         conversationId={conversationId || ''}
-        providerId={providerId}
       />
     </>
   );
