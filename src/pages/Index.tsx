@@ -28,6 +28,7 @@ interface Message {
   isError?: boolean;
   canRetry?: boolean;
   provider?: AIProvider;
+  isStreaming?: boolean;
 }
 
 const Index = () => {
@@ -209,26 +210,79 @@ const Index = () => {
     }
     setIsSendingMessage(true);
     setIsTyping(true);
+    
+    // Create streaming message placeholder
+    const streamingMessageId = `streaming-${Date.now()}`;
+    const streamingMessage: Message = {
+      id: streamingMessageId,
+      content: '',
+      role: 'assistant',
+      timestamp: new Date(),
+      provider: selectedProvider as any,
+      isStreaming: true,
+    };
+
     try {
       if (!isRetry) {
         await ChatService.saveMessage(currentChatId, 'user', content);
       }
+      
       const chatMessages: ServiceChatMessage[] = [...conversationHistory, {
         role: 'user',
         content
       }];
-      console.log('Sending to Hobnob AI:', {
+      
+      console.log('Sending to Enhanced AI:', {
         messageCount: chatMessages.length,
         currentChatId,
         isRetry,
-        providerId: selectedProvider
+        provider: selectedProvider
       });
-      const response = await AIService.sendMessage(chatMessages, {
+
+      // Add streaming message to UI
+      setMessages(prev => {
+        if (isRetry) {
+          return [...prev.slice(0, -1), streamingMessage];
+        }
+        return [...prev, streamingMessage];
+      });
+
+      // Use streaming for real-time response
+      let fullResponse = '';
+      const response = await AIService.sendStreamingMessage(chatMessages, {
         conversationId: currentChatId,
         userId: user.id,
-        providerId: selectedProvider
+        provider: selectedProvider as any,
+        stream: true
+      }, (chunk: string) => {
+        // Update streaming message in real-time
+        fullResponse += chunk;
+        setMessages(prev => prev.map(msg => 
+          msg.id === streamingMessageId 
+            ? { ...msg, content: fullResponse }
+            : msg
+        ));
       });
-      await ChatService.saveMessage(currentChatId, 'assistant', response.message);
+
+      // Finalize the message
+      const finalMessage: Message = {
+        id: `ai-${Date.now()}`,
+        content: response.message || fullResponse,
+        role: 'assistant',
+        timestamp: new Date(),
+        provider: response.provider,
+        isStreaming: false,
+      };
+
+      // Replace streaming message with final message
+      setMessages(prev => prev.map(msg => 
+        msg.id === streamingMessageId ? finalMessage : msg
+      ));
+
+      // Save to database
+      await ChatService.saveMessage(currentChatId, 'assistant', finalMessage.content);
+      
+      // Update conversation title if first message
       if (conversationHistory.length === 0 && !isRetry) {
         const title = await ChatService.generateTitle([{
           role: 'user',
@@ -238,25 +292,11 @@ const Index = () => {
         console.log('Updated conversation title to:', title);
       }
       
-      const aiMessage: Message = {
-        id: `ai-${Date.now()}`,
-        content: response.message,
-        role: 'assistant',
-        timestamp: new Date(),
-        provider: response.provider,
-      };
-      
-      setMessages(prev => {
-        if (isRetry) {
-          return [...prev.slice(0, -1), aiMessage];
-        }
-        return [...prev, aiMessage];
-      });
       setConversationHistory(prev => {
         if (isRetry) {
           return [...prev, {
             role: 'assistant',
-            content: response.message
+            content: finalMessage.content
           }];
         }
         return [...prev, {
@@ -264,13 +304,15 @@ const Index = () => {
           content
         }, {
           role: 'assistant',
-          content: response.message
+          content: finalMessage.content
         }];
       });
-      console.log('Hobnob AI response received successfully:', {
-        length: response.message.length,
+      
+      console.log('Enhanced AI response received successfully:', {
+        length: finalMessage.content.length,
         usage: response.usage,
         provider: response.provider,
+        streaming: true
       });
       if (isRetry) {
         const provider = UnifiedProviderService.getProvider(selectedProvider);

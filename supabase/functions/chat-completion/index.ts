@@ -8,8 +8,100 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Note: Grok models are text-only and do not support image generation
-// Image generation has been removed as it's not supported by xAI's Grok models
+// Enhanced AI service with multiple providers and streaming support
+
+// Intelligent model selection based on query analysis
+function selectOptimalProvider(messages) {
+  const lastMessage = messages[messages.length - 1]?.content?.toLowerCase() || '';
+  
+  // Use Claude for complex reasoning, coding, analysis
+  if (lastMessage.includes('code') || lastMessage.includes('analyze') || 
+      lastMessage.includes('explain') || lastMessage.includes('debug') ||
+      lastMessage.includes('algorithm') || lastMessage.includes('logic')) {
+    return 'claude';
+  }
+  
+  // Use OpenAI for general conversation and quick responses
+  if (lastMessage.length < 100 || lastMessage.includes('quick') || lastMessage.includes('simple')) {
+    return 'openai';
+  }
+  
+  // Use Grok for creative tasks and humor
+  if (lastMessage.includes('creative') || lastMessage.includes('funny') || 
+      lastMessage.includes('joke') || lastMessage.includes('story')) {
+    return 'grok';
+  }
+  
+  // Default to Claude for best quality
+  return 'claude';
+}
+
+async function callClaudeAPI(messages, stream = false) {
+  const anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY');
+  if (!anthropicApiKey) throw new Error('Claude API key not configured');
+  
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${anthropicApiKey}`,
+      'Content-Type': 'application/json',
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-3-5-sonnet-20241022',
+      messages: messages.filter(m => m.role !== 'system'),
+      system: messages.find(m => m.role === 'system')?.content || 'You are a helpful AI assistant.',
+      max_tokens: 4000,
+      stream,
+    }),
+  });
+  
+  return response;
+}
+
+async function callOpenAIAPI(messages, stream = false) {
+  const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openaiApiKey) throw new Error('OpenAI API key not configured');
+  
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openaiApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4.1-2025-04-14',
+      messages,
+      max_tokens: 2000,
+      temperature: 0.7,
+      stream,
+    }),
+  });
+  
+  return response;
+}
+
+async function callGrokAPI(messages, stream = false) {
+  const xaiApiKey = Deno.env.get('XAI_API_KEY');
+  if (!xaiApiKey) throw new Error('Grok API key not configured');
+  
+  const response = await fetch('https://api.x.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${xaiApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'grok-3',
+      messages,
+      max_tokens: 2000,
+      temperature: 0.7,
+      stream,
+    }),
+  });
+  
+  return response;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -17,26 +109,22 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, conversationId, userId, isGuest = false } = await req.json();
+    const { messages, conversationId, userId, isGuest = false, provider, stream = true } = await req.json();
     
-    console.log('Chat completion request (Grok only):', { 
+    // Select optimal provider if not specified
+    const selectedProvider = provider || selectOptimalProvider(messages);
+    
+    console.log('Enhanced chat completion request:', { 
       messageCount: messages?.length, 
       conversationId, 
       userId,
-      isGuest
+      isGuest,
+      provider: selectedProvider,
+      streaming: stream
     });
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       throw new Error('Messages array is required and cannot be empty');
-    }
-
-    // Note: Image generation is not supported by Grok models
-
-    // Get API keys
-    const xaiApiKey = Deno.env.get('XAI_API_KEY');
-
-    if (!xaiApiKey) {
-      throw new Error('Grok API key not configured');
     }
 
     // Initialize Supabase client for authenticated users
@@ -67,55 +155,126 @@ serve(async (req) => {
       user = authUser;
     }
 
-    // No image generation - Grok models are text-only
-
-    // Call Grok API for text response
-    console.log('Using Grok API with model grok-3');
-    const aiResponse = await fetch('https://api.x.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${xaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'grok-3',
-        messages: messages,
-        max_tokens: 2000,
-        temperature: 0.7,
-      }),
-    });
+    // Call the selected AI provider
+    let aiResponse;
+    
+    if (selectedProvider === 'claude') {
+      console.log('Using Claude API (Sonnet)');
+      aiResponse = await callClaudeAPI(messages, stream);
+    } else if (selectedProvider === 'openai') {
+      console.log('Using OpenAI API (GPT-4.1)');
+      aiResponse = await callOpenAIAPI(messages, stream);
+    } else {
+      console.log('Using Grok API (default)');
+      aiResponse = await callGrokAPI(messages, stream);
+    }
 
     if (!aiResponse.ok) {
-      const errorData = await aiResponse.json().catch(() => ({}));
-      console.error('Grok API error:', { status: aiResponse.status, statusText: aiResponse.statusText, errorData });
+      const errorText = await aiResponse.text();
+      console.error(`${selectedProvider} API error:`, { status: aiResponse.status, statusText: aiResponse.statusText, errorText });
       
-      if (aiResponse.status === 401) {
-        throw new Error('Grok API key is invalid or expired. Please check your API key configuration.');
-      } else if (aiResponse.status === 403) {
-        throw new Error('Access denied to Grok API. Please check your API key permissions and account credits.');
-      } else if (aiResponse.status === 404) {
-        throw new Error('Grok model not found. Please verify the model name and your API access.');
-      } else if (aiResponse.status === 429) {
-        throw new Error('Rate limit exceeded. Please try again later.');
+      // Fallback to another provider if the primary fails
+      if (selectedProvider !== 'grok') {
+        console.log('Primary provider failed, falling back to Grok');
+        aiResponse = await callGrokAPI(messages, false);
+        if (!aiResponse.ok) {
+          throw new Error(`All providers failed. Last error: ${aiResponse.status} - ${aiResponse.statusText}`);
+        }
+      } else {
+        throw new Error(`${selectedProvider} API error: ${aiResponse.status} - ${aiResponse.statusText}`);
       }
-      
-      throw new Error(errorData.error?.message || `Grok API error: ${aiResponse.status} - ${aiResponse.statusText}`);
     }
 
+    // Handle streaming response
+    if (stream && aiResponse.headers.get('content-type')?.includes('text/plain')) {
+      console.log('Streaming response detected');
+      
+      // Create a readable stream to process the response
+      const encoder = new TextEncoder();
+      const readable = new ReadableStream({
+        async start(controller) {
+          const reader = aiResponse.body?.getReader();
+          if (!reader) {
+            controller.close();
+            return;
+          }
+
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              const chunk = new TextDecoder().decode(value);
+              const lines = chunk.split('\n');
+
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const data = line.slice(6);
+                  if (data === '[DONE]') continue;
+                  
+                  try {
+                    const parsed = JSON.parse(data);
+                    let content = '';
+                    
+                    if (selectedProvider === 'claude' && parsed.delta?.text) {
+                      content = parsed.delta.text;
+                    } else if (selectedProvider === 'openai' && parsed.choices?.[0]?.delta?.content) {
+                      content = parsed.choices[0].delta.content;
+                    } else if (selectedProvider === 'grok' && parsed.choices?.[0]?.delta?.content) {
+                      content = parsed.choices[0].delta.content;
+                    }
+                    
+                    if (content) {
+                      const streamData = `data: ${JSON.stringify({ content, provider: selectedProvider })}\n\n`;
+                      controller.enqueue(encoder.encode(streamData));
+                    }
+                  } catch (e) {
+                    // Skip invalid JSON
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Streaming error:', error);
+          } finally {
+            controller.close();
+          }
+        }
+      });
+
+      return new Response(readable, {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    }
+
+    // Handle non-streaming response
     const data = await aiResponse.json();
-    const aiMessage = data.choices[0]?.message?.content;
+    let aiMessage = '';
+    let usage = {};
+
+    if (selectedProvider === 'claude') {
+      aiMessage = data.content?.[0]?.text || '';
+      usage = data.usage || {};
+    } else if (selectedProvider === 'openai' || selectedProvider === 'grok') {
+      aiMessage = data.choices?.[0]?.message?.content || '';
+      usage = data.usage || {};
+    }
 
     if (!aiMessage) {
-      throw new Error('No response generated from Grok');
+      throw new Error(`No response generated from ${selectedProvider}`);
     }
 
-    console.log('Grok response received successfully');
+    console.log(`${selectedProvider} response received successfully`);
 
-    // Return text-only response
     const response = {
       message: aiMessage,
-      usage: data.usage,
-      provider: 'grok',
+      usage,
+      provider: selectedProvider,
       isGuest
     };
 
