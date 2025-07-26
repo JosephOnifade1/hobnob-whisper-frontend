@@ -135,6 +135,66 @@ async function callGrokAPI(messages, stream = false) {
   return response;
 }
 
+// Multi-provider fallback with robust error handling
+async function callWithFallback(messages, stream, primaryProvider) {
+  const providers = ['claude', 'openai', 'grok'];
+  
+  // Put primary provider first
+  if (primaryProvider && providers.includes(primaryProvider)) {
+    const index = providers.indexOf(primaryProvider);
+    providers.splice(index, 1);
+    providers.unshift(primaryProvider);
+  }
+
+  let lastError;
+  
+  for (const provider of providers) {
+    try {
+      console.log(`🔄 Trying ${provider}...`);
+      let response;
+      
+      if (provider === 'claude') {
+        response = await callClaudeAPI(messages, stream);
+      } else if (provider === 'openai') {
+        response = await callOpenAIAPI(messages, stream);
+      } else {
+        response = await callGrokAPI(messages, stream);
+      }
+      
+      if (response.ok) {
+        console.log(`✅ ${provider} succeeded`);
+        return { response, provider };
+      } else {
+        throw new Error(`${provider} API returned ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error(`❌ ${provider} failed:`, error.message);
+      lastError = error;
+      continue;
+    }
+  }
+  
+  throw new Error(`All providers failed. Last error: ${lastError?.message}`);
+}
+
+// Enhanced memory context preparation
+function prepareContextualMessages(messages, conversationHistory) {
+  // Limit context to avoid token limits while maintaining relevance
+  const recentMessages = messages.slice(-15);
+  
+  // Add conversation history for better context if available
+  if (conversationHistory && conversationHistory.length > 0) {
+    const historyContext = conversationHistory.slice(-5).map(msg => ({
+      role: msg.role,
+      content: msg.content.substring(0, 400) // Truncate long messages
+    }));
+    
+    return [...historyContext, ...recentMessages];
+  }
+  
+  return recentMessages;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -143,16 +203,12 @@ serve(async (req) => {
   try {
     const { messages, conversationId, userId, isGuest = false, provider, stream = true } = await req.json();
     
-    // Add Hobnob AI personality and select optimal provider
-    const enhancedMessages = addHobnobPersonality(messages);
-    const selectedProvider = provider || selectOptimalProvider(enhancedMessages);
-    
     console.log('Enhanced chat completion request:', { 
       messageCount: messages?.length, 
       conversationId, 
       userId,
       isGuest,
-      provider: selectedProvider,
+      provider,
       streaming: stream
     });
 
@@ -191,133 +247,175 @@ serve(async (req) => {
       user = authUser;
     }
 
-    // Call the selected AI provider
-    let aiResponse;
-    
-    if (selectedProvider === 'claude') {
-      console.log('Hobnob AI using Claude for complex reasoning');
-      aiResponse = await callClaudeAPI(enhancedMessages, stream);
-    } else if (selectedProvider === 'openai') {
-      console.log('Hobnob AI using OpenAI for quick responses');
-      aiResponse = await callOpenAIAPI(enhancedMessages, stream);
-    } else {
-      console.log('Hobnob AI using Grok for creative tasks');
-      aiResponse = await callGrokAPI(enhancedMessages, stream);
-    }
-
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error(`${selectedProvider} API error:`, { status: aiResponse.status, statusText: aiResponse.statusText, errorText });
-      
-      // Hobnob AI fallback system
-      if (selectedProvider !== 'grok') {
-        console.log('Hobnob AI falling back to Grok for reliability');
-        aiResponse = await callGrokAPI(enhancedMessages, false);
-        if (!aiResponse.ok) {
-          throw new Error(`Hobnob AI: All providers failed. Last error: ${aiResponse.status} - ${aiResponse.statusText}`);
-        }
-      } else {
-        throw new Error(`Hobnob AI error: ${selectedProvider} API error: ${aiResponse.status} - ${aiResponse.statusText}`);
+    // Load conversation history for better context
+    let conversationHistory = [];
+    if (conversationId && supabase) {
+      try {
+        const { data: historyData } = await supabase
+          .from('messages')
+          .select('role, content')
+          .eq('conversation_id', conversationId)
+          .order('created_at', { ascending: true })
+          .limit(10);
+        
+        conversationHistory = historyData || [];
+        console.log(`📚 Loaded ${conversationHistory.length} historical messages for context`);
+      } catch (error) {
+        console.warn('Could not load conversation history:', error);
       }
     }
 
-    // Handle streaming response
-    if (stream && aiResponse.headers.get('content-type')?.includes('text/plain')) {
-      console.log('Streaming response detected');
-      
-      // Create a readable stream to process the response
-      const encoder = new TextEncoder();
-      const readable = new ReadableStream({
-        async start(controller) {
-          const reader = aiResponse.body?.getReader();
-          if (!reader) {
-            controller.close();
-            return;
-          }
+    // Prepare enhanced messages with context and personality
+    const contextualMessages = prepareContextualMessages(messages, conversationHistory);
+    const enhancedMessages = addHobnobPersonality(contextualMessages);
+    const selectedProvider = provider || selectOptimalProvider(enhancedMessages);
 
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
+    try {
+      // Call AI with automatic fallback
+      const { response: aiResponse, provider: usedProvider } = await callWithFallback(enhancedMessages, stream, selectedProvider);
+      console.log(`🤖 Using ${usedProvider} for response`);
+    
 
-              const chunk = new TextDecoder().decode(value);
-              const lines = chunk.split('\n');
+      // Handle streaming response with improved parsing
+      if (stream) {
+        const reader = aiResponse.body?.getReader();
+        if (!reader) {
+          throw new Error('Failed to get response reader');
+        }
 
-              for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                  const data = line.slice(6);
-                  if (data === '[DONE]') continue;
-                  
-                  try {
-                    const parsed = JSON.parse(data);
-                    let content = '';
-                    
-                    if (selectedProvider === 'claude' && parsed.delta?.text) {
-                      content = parsed.delta.text;
-                    } else if (selectedProvider === 'openai' && parsed.choices?.[0]?.delta?.content) {
-                      content = parsed.choices[0].delta.content;
-                    } else if (selectedProvider === 'grok' && parsed.choices?.[0]?.delta?.content) {
-                      content = parsed.choices[0].delta.content;
+        const encoder = new TextEncoder();
+        const decoder = new TextDecoder();
+
+        const readable = new ReadableStream({
+          async start(controller) {
+            try {
+              let buffer = '';
+              
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+                for (const line of lines) {
+                  if (line.startsWith('data: ')) {
+                    const data = line.slice(6).trim();
+                    if (data === '[DONE]') {
+                      controller.close();
+                      return;
                     }
-                    
-                    if (content) {
-                      const streamData = `data: ${JSON.stringify({ content, provider: selectedProvider })}\n\n`;
-                      controller.enqueue(encoder.encode(streamData));
+
+                    try {
+                      const parsed = JSON.parse(data);
+                      let content = '';
+
+                      // Extract content based on provider format
+                      if (usedProvider === 'claude' && parsed.delta?.text) {
+                        content = parsed.delta.text;
+                      } else if ((usedProvider === 'openai' || usedProvider === 'grok') && parsed.choices?.[0]?.delta?.content) {
+                        content = parsed.choices[0].delta.content;
+                      }
+
+                      if (content) {
+                        const streamData = `data: ${JSON.stringify({ content, provider: usedProvider })}\n\n`;
+                        controller.enqueue(encoder.encode(streamData));
+                      }
+                    } catch (parseError) {
+                      console.warn('Skipping malformed chunk:', data.substring(0, 100));
+                      // Continue processing instead of failing
                     }
-                  } catch (e) {
-                    // Skip invalid JSON
                   }
                 }
               }
+              
+              controller.close();
+            } catch (error) {
+              console.error('Streaming error:', error);
+              controller.error(error);
             }
-          } catch (error) {
-            console.error('Streaming error:', error);
-          } finally {
+          }
+        });
+
+        return new Response(readable, {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          },
+        });
+      } else {
+        // Handle non-streaming response
+        const data = await aiResponse.json();
+        let aiMessage = '';
+        let usage = {};
+
+        if (usedProvider === 'claude') {
+          aiMessage = data.content?.[0]?.text || '';
+          usage = data.usage || {};
+        } else if (usedProvider === 'openai' || usedProvider === 'grok') {
+          aiMessage = data.choices?.[0]?.message?.content || '';
+          usage = data.usage || {};
+        }
+
+        if (!aiMessage) {
+          throw new Error(`No response generated from ${usedProvider}`);
+        }
+
+        console.log(`✅ ${usedProvider} response received successfully`);
+
+        const response = {
+          message: aiMessage,
+          usage,
+          provider: usedProvider,
+          isGuest,
+          assistant: 'Hobnob AI'
+        };
+
+        return new Response(JSON.stringify(response), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+    } catch (allProvidersError) {
+      console.error('❌ All providers failed:', allProvidersError);
+      
+      // Return fallback response to ensure user always gets a reply
+      const fallbackContent = "I'm experiencing technical difficulties at the moment. Please try again in a few moments. If the issue persists, please check your internet connection.";
+      
+      if (stream) {
+        const encoder = new TextEncoder();
+        const fallbackStream = new ReadableStream({
+          start(controller) {
+            const streamData = `data: ${JSON.stringify({ content: fallbackContent, provider: 'fallback' })}\n\n`;
+            controller.enqueue(encoder.encode(streamData));
             controller.close();
           }
-        }
-      });
+        });
 
-      return new Response(readable, {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-        },
-      });
+        return new Response(fallbackStream, {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          },
+        });
+      } else {
+        return new Response(JSON.stringify({
+          message: fallbackContent,
+          provider: 'fallback',
+          isGuest,
+          assistant: 'Hobnob AI',
+          error: 'All AI providers temporarily unavailable'
+        }), {
+          status: 503,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
-
-    // Handle non-streaming response
-    const data = await aiResponse.json();
-    let aiMessage = '';
-    let usage = {};
-
-    if (selectedProvider === 'claude') {
-      aiMessage = data.content?.[0]?.text || '';
-      usage = data.usage || {};
-    } else if (selectedProvider === 'openai' || selectedProvider === 'grok') {
-      aiMessage = data.choices?.[0]?.message?.content || '';
-      usage = data.usage || {};
-    }
-
-    if (!aiMessage) {
-      throw new Error(`No response generated from ${selectedProvider}`);
-    }
-
-    console.log(`Hobnob AI (${selectedProvider}) response received successfully`);
-
-    const response = {
-      message: aiMessage,
-      usage,
-      provider: selectedProvider,
-      isGuest,
-      assistant: 'Hobnob AI'
-    };
-
-    return new Response(JSON.stringify(response), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
 
   } catch (error) {
     console.error('Error in chat-completion function:', error);

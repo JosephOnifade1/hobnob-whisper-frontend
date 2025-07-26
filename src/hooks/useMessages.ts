@@ -126,7 +126,24 @@ export const useMessages = (conversationId: string | null) => {
 
       // Update local state if this is for the current conversation
       if (targetConversationId === conversationId) {
-        setMessages(prev => [...prev, data as ChatMessage]);
+        setMessages(prev => {
+          // Avoid duplicates by checking if message already exists
+          const exists = prev.some(msg => msg.id === data.id);
+          if (exists) return prev;
+          return [...prev, data as ChatMessage];
+        });
+
+        // Update conversation's last_message_at timestamp for better memory context
+        if (role === 'assistant') {
+          try {
+            await supabase
+              .from('conversations')
+              .update({ last_message_at: new Date().toISOString() })
+              .eq('id', targetConversationId);
+          } catch (updateError) {
+            console.warn('Could not update conversation timestamp:', updateError);
+          }
+        }
       }
 
       return data as ChatMessage;

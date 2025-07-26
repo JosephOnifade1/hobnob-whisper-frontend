@@ -84,21 +84,26 @@ export class AIService {
     options: AIServiceOptions = {}
   ): Promise<AIResponse> {
     // Select provider: explicit > saved preference > intelligent selection
-    const selectedProvider = options.provider || 
-                            (options.isGuest ? 'openai' : this.getDefaultProvider()) ||
-                            this.selectOptimalProvider(messages);
+    const primaryProvider = options.provider || 
+                           (options.isGuest ? 'openai' : this.getDefaultProvider()) ||
+                           this.selectOptimalProvider(messages);
     
-    try {
-      console.log(`Processing message with ${selectedProvider.toUpperCase()}`);
-      
-      let response;
-      if (options.isGuest) {
-        // For guest users, use OpenAI for fast responses
-        response = await OpenAIService.sendMessage(messages, options);
-      } else {
-        // For authenticated users, use selected provider with fallback
-        try {
-          switch (selectedProvider) {
+    // Try multiple providers in sequence for maximum reliability
+    const providers = [primaryProvider, 'claude', 'openai', 'grok'].filter((p, index, arr) => arr.indexOf(p) === index);
+    
+    let lastError;
+    
+    for (const currentProvider of providers) {
+      try {
+        console.log(`🔄 Trying ${currentProvider.toUpperCase()}...`);
+        
+        let response;
+        if (options.isGuest) {
+          // For guest users, call the unified edge function
+          response = await GuestChatService.sendMessage(messages);
+        } else {
+          // For authenticated users, use provider-specific services
+          switch (currentProvider) {
             case 'claude':
               response = await ClaudeService.sendMessage(messages, options);
               break;
@@ -106,24 +111,33 @@ export class AIService {
               response = await OpenAIService.sendMessage(messages, options);
               break;
             case 'grok':
-            default:
               response = await GrokService.sendMessage(messages, options);
               break;
+            default:
+              throw new Error(`Unsupported provider: ${currentProvider}`);
           }
-        } catch (primaryError) {
-          console.log(`Primary provider ${selectedProvider} failed, falling back to Grok`);
-          response = await GrokService.sendMessage(messages, options);
         }
-      }
 
-      return {
-        ...response,
-        provider: selectedProvider,
-      };
-    } catch (error) {
-      console.error(`Error with ${selectedProvider}:`, error);
-      throw error;
+        console.log(`✅ ${currentProvider.toUpperCase()} succeeded`);
+        return {
+          ...response,
+          provider: currentProvider as AIProvider,
+        };
+      } catch (error) {
+        console.error(`❌ ${currentProvider.toUpperCase()} failed:`, error);
+        lastError = error;
+        
+        // If this was the last provider, throw the error
+        if (currentProvider === providers[providers.length - 1]) {
+          break;
+        }
+        
+        // Continue to next provider
+        continue;
+      }
     }
+    
+    throw new Error(`All providers failed. Last error: ${lastError?.message}`);
   }
 
   static async sendStreamingMessage(
@@ -131,35 +145,61 @@ export class AIService {
     options: AIServiceOptions = {},
     onChunk?: (chunk: string) => void
   ): Promise<AIResponse> {
-    const selectedProvider = options.provider || this.selectOptimalProvider(messages);
+    const primaryProvider = options.provider || this.selectOptimalProvider(messages);
     
-    try {
-      console.log(`Streaming message with ${selectedProvider.toUpperCase()}`);
-      
-      let response;
-      switch (selectedProvider) {
-        case 'claude':
-          response = await ClaudeService.sendStreamingMessage(messages, options, onChunk);
-          break;
-        case 'openai':
-          response = await OpenAIService.sendStreamingMessage(messages, options, onChunk);
-          break;
-        case 'grok':
-        default:
-          // Grok streaming not implemented yet, use regular
-          response = await GrokService.sendMessage(messages, options);
+    // Try multiple providers in sequence for streaming reliability
+    const providers = [primaryProvider, 'claude', 'openai', 'grok'].filter((p, index, arr) => arr.indexOf(p) === index);
+    
+    let lastError;
+    
+    for (const currentProvider of providers) {
+      try {
+        console.log(`🔄 Trying streaming with ${currentProvider.toUpperCase()}...`);
+        
+        let response;
+        if (options.isGuest) {
+          // For guest users, use regular message service
+          response = await GuestChatService.sendMessage(messages);
           onChunk?.(response.message);
-          break;
-      }
+        } else {
+          // For authenticated users, use provider-specific services
+          switch (currentProvider) {
+            case 'claude':
+              response = await ClaudeService.sendStreamingMessage(messages, options, onChunk);
+              break;
+            case 'openai':
+              response = await OpenAIService.sendStreamingMessage(messages, options, onChunk);
+              break;
+            case 'grok':
+              // Fallback to regular message for Grok
+              response = await GrokService.sendMessage(messages, options);
+              onChunk?.(response.message);
+              break;
+            default:
+              throw new Error(`Unsupported provider: ${currentProvider}`);
+          }
+        }
 
-      return {
-        ...response,
-        provider: selectedProvider,
-      };
-    } catch (error) {
-      console.error(`Streaming error with ${selectedProvider}:`, error);
-      throw error;
+        console.log(`✅ ${currentProvider.toUpperCase()} streaming succeeded`);
+        return {
+          ...response,
+          provider: currentProvider as AIProvider,
+        };
+      } catch (error) {
+        console.error(`❌ ${currentProvider.toUpperCase()} streaming failed:`, error);
+        lastError = error;
+        
+        // If this was the last provider, throw the error
+        if (currentProvider === providers[providers.length - 1]) {
+          break;
+        }
+        
+        // Continue to next provider
+        continue;
+      }
     }
+    
+    throw new Error(`All streaming providers failed. Last error: ${lastError?.message}`);
   }
 
   static getAvailableProviders(): { value: AIProvider; label: string; description: string }[] {
