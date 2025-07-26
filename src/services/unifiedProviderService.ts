@@ -6,7 +6,7 @@ export interface UnifiedProvider {
   name: string;
   description: string;
   chatProvider: AIProvider | 'grok';
-  imageProvider: 'openai' | 'grok' | 'stability';
+  imageProvider: 'openai' | 'grok' | 'stability' | 'replicate';
   icon: string;
   capabilities: {
     chat: boolean;
@@ -26,6 +26,18 @@ export class UnifiedProviderService {
       capabilities: {
         chat: true,
         image: false
+      }
+    },
+    {
+      id: 'replicate',
+      name: 'Replicate',
+      description: 'Fast, high-quality image generation with Flux Schnell',
+      chatProvider: 'grok',
+      imageProvider: 'replicate',
+      icon: 'zap',
+      capabilities: {
+        chat: false,
+        image: true
       }
     },
     {

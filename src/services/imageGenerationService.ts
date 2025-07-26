@@ -6,6 +6,9 @@ export interface ImageGenerationRequest {
   conversationId: string;
   messageId?: string;
   providerId?: string;
+  aspectRatio?: string;
+  outputFormat?: string;
+  model?: string;
 }
 
 export interface ImageGenerationResponse {
@@ -35,7 +38,10 @@ export class ImageGenerationService {
           prompt: request.prompt,
           conversationId: request.conversationId,
           messageId: request.messageId,
-          provider: imageProvider
+          provider: imageProvider,
+          aspectRatio: request.aspectRatio,
+          outputFormat: request.outputFormat,
+          model: request.model
         }
       });
 
