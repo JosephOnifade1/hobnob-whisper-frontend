@@ -17,7 +17,7 @@ async function generateWithReplicate(prompt: string, aspectRatio = '1:1') {
   console.log(`Using Replicate API with prompt: "${prompt}", aspect_ratio: "${aspectRatio}"`);
 
   const output = await replicate.run(
-    "black-forest-labs/flux-schnell",
+    "black-forest-labs/flux-1.1-pro",
     {
       input: {
         prompt: prompt,
