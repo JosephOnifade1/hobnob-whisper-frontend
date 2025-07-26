@@ -14,10 +14,9 @@ import ChatInput from '@/components/ChatInput';
 import TypingIndicator from '@/components/TypingIndicator';
 import ThemeToggle from '@/components/ThemeToggle';
 import GuestMode from '@/components/GuestMode';
-import ModelSelector from '@/components/ModelSelector';
+import WelcomeMessage from '@/components/WelcomeMessage';
 import { ChatService, type ChatMessage as ServiceChatMessage } from '@/services/chatService';
 import { AIService, AIProvider } from '@/services/aiService';
-import { UnifiedProviderService } from '@/services/unifiedProviderService';
 
 interface Message {
   id: string;
@@ -53,7 +52,6 @@ const Index = () => {
   const [isRestoringState, setIsRestoringState] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [showGuestMode, setShowGuestMode] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<string>(AIService.getDefaultProviderId());
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
@@ -137,17 +135,6 @@ const Index = () => {
     scrollToBottom(true);
   }, [scrollToBottom]);
 
-  const handleProviderChange = (providerId: string) => {
-    setSelectedProvider(providerId);
-    AIService.setDefaultProvider(providerId);
-    const provider = UnifiedProviderService.getProvider(providerId);
-    if (provider) {
-      toast({
-        title: "AI Mode Changed",
-        description: `Switched to ${provider.name} for optimized performance`
-      });
-    }
-  };
 
   useEffect(() => {
     if (user && !initializing && conversations.length > 0 && !isRestoringState && !currentChatId) {
@@ -218,7 +205,7 @@ const Index = () => {
       content: '',
       role: 'assistant',
       timestamp: new Date(),
-      provider: selectedProvider as any,
+      provider: 'auto' as any,
       isStreaming: true,
     };
 
@@ -236,7 +223,7 @@ const Index = () => {
         messageCount: chatMessages.length,
         currentChatId,
         isRetry,
-        provider: selectedProvider
+        provider: 'auto-select'
       });
 
       // Add streaming message to UI
@@ -252,7 +239,7 @@ const Index = () => {
       const response = await AIService.sendStreamingMessage(chatMessages, {
         conversationId: currentChatId,
         userId: user.id,
-        provider: selectedProvider as any,
+        // Provider will be auto-selected by AI service
         stream: true
       }, (chunk: string) => {
         // Update streaming message in real-time
@@ -315,8 +302,7 @@ const Index = () => {
         streaming: true
       });
       if (isRetry) {
-        const provider = UnifiedProviderService.getProvider(selectedProvider);
-        const capabilityName = provider?.name || 'AI';
+        const capabilityName = 'Hobnob AI';
         toast({
           title: "Success!",
           description: `Message sent successfully using ${capabilityName}.`
@@ -595,12 +581,10 @@ const Index = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <ModelSelector 
-                  selectedProvider={selectedProvider} 
-                  onProviderChange={handleProviderChange} 
-                  disabled={isTyping || isSendingMessage} 
-                  compact={isMobile}
-                />
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full">
+                  <Bot className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium text-primary">Hobnob AI</span>
+                </div>
                 <ThemeToggle />
               </div>
             </div>
@@ -631,11 +615,11 @@ const Index = () => {
                     </p>
                   </div>
                   {!isMobile && (
-                    <ModelSelector 
-                      selectedProvider={selectedProvider} 
-                      onProviderChange={handleProviderChange} 
-                      disabled={isTyping || isSendingMessage} 
-                    />
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full">
+                      <Bot className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium text-primary">Hobnob AI</span>
+                      <span className="text-xs text-muted-foreground">Smart Mode</span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -651,6 +635,10 @@ const Index = () => {
                   <p className="text-muted-foreground font-medium">Restoring conversation...</p>
                 </div>
               </div>
+            )}
+            
+            {messages.length === 0 && (
+              <WelcomeMessage />
             )}
             
             {messages.map((message, index) => (

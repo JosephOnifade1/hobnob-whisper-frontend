@@ -10,30 +10,62 @@ const corsHeaders = {
 
 // Enhanced AI service with multiple providers and streaming support
 
-// Intelligent model selection based on query analysis
+// Enhanced intelligent model selection for Hobnob AI
 function selectOptimalProvider(messages) {
   const lastMessage = messages[messages.length - 1]?.content?.toLowerCase() || '';
+  const messageLength = lastMessage.length;
   
-  // Use Claude for complex reasoning, coding, analysis
+  // Use Claude for complex reasoning, coding, analysis, long-form content
   if (lastMessage.includes('code') || lastMessage.includes('analyze') || 
       lastMessage.includes('explain') || lastMessage.includes('debug') ||
-      lastMessage.includes('algorithm') || lastMessage.includes('logic')) {
+      lastMessage.includes('algorithm') || lastMessage.includes('logic') ||
+      lastMessage.includes('write') || lastMessage.includes('create') ||
+      lastMessage.includes('complex') || messageLength > 200) {
     return 'claude';
   }
   
-  // Use OpenAI for general conversation and quick responses
-  if (lastMessage.length < 100 || lastMessage.includes('quick') || lastMessage.includes('simple')) {
+  // Use OpenAI for quick responses, simple questions, general chat
+  if (messageLength < 100 || lastMessage.includes('quick') || 
+      lastMessage.includes('simple') || lastMessage.includes('hello') ||
+      lastMessage.includes('hi') || lastMessage.includes('what') ||
+      lastMessage.includes('how') || lastMessage.includes('when')) {
     return 'openai';
   }
   
-  // Use Grok for creative tasks and humor
+  // Use Grok for creative tasks, humor, storytelling
   if (lastMessage.includes('creative') || lastMessage.includes('funny') || 
-      lastMessage.includes('joke') || lastMessage.includes('story')) {
+      lastMessage.includes('joke') || lastMessage.includes('story') ||
+      lastMessage.includes('imagine') || lastMessage.includes('generate') ||
+      lastMessage.includes('fun') || lastMessage.includes('creative')) {
     return 'grok';
   }
   
-  // Default to Claude for best quality
+  // Default to Claude for best overall quality
   return 'claude';
+}
+
+// Add Hobnob AI personality to messages
+function addHobnobPersonality(messages) {
+  const systemPrompt = {
+    role: 'system',
+    content: `You are Hobnob AI, a smart, helpful, and friendly AI assistant. Your personality traits:
+- Intelligent and insightful, but approachable
+- Clear and concise in explanations
+- Adaptable to user's needs and communication style
+- Proactive in offering helpful suggestions
+- Professional yet warm in tone
+- Quick to understand context and provide relevant responses
+
+Always strive to be helpful, accurate, and engaging while maintaining your distinct Hobnob AI identity.`
+  };
+  
+  // Check if system message already exists
+  const hasSystemMessage = messages.some(msg => msg.role === 'system');
+  if (hasSystemMessage) {
+    return messages;
+  }
+  
+  return [systemPrompt, ...messages];
 }
 
 async function callClaudeAPI(messages, stream = false) {
@@ -48,9 +80,9 @@ async function callClaudeAPI(messages, stream = false) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-opus-4-20250514',
       messages: messages.filter(m => m.role !== 'system'),
-      system: messages.find(m => m.role === 'system')?.content || 'You are a helpful AI assistant.',
+      system: messages.find(m => m.role === 'system')?.content || 'You are Hobnob AI, a helpful and intelligent assistant.',
       max_tokens: 4000,
       stream,
     }),
@@ -111,8 +143,9 @@ serve(async (req) => {
   try {
     const { messages, conversationId, userId, isGuest = false, provider, stream = true } = await req.json();
     
-    // Select optimal provider if not specified
-    const selectedProvider = provider || selectOptimalProvider(messages);
+    // Add Hobnob AI personality and select optimal provider
+    const enhancedMessages = addHobnobPersonality(messages);
+    const selectedProvider = provider || selectOptimalProvider(enhancedMessages);
     
     console.log('Enhanced chat completion request:', { 
       messageCount: messages?.length, 
@@ -159,29 +192,29 @@ serve(async (req) => {
     let aiResponse;
     
     if (selectedProvider === 'claude') {
-      console.log('Using Claude API (Sonnet)');
-      aiResponse = await callClaudeAPI(messages, stream);
+      console.log('Hobnob AI using Claude for complex reasoning');
+      aiResponse = await callClaudeAPI(enhancedMessages, stream);
     } else if (selectedProvider === 'openai') {
-      console.log('Using OpenAI API (GPT-4.1)');
-      aiResponse = await callOpenAIAPI(messages, stream);
+      console.log('Hobnob AI using OpenAI for quick responses');
+      aiResponse = await callOpenAIAPI(enhancedMessages, stream);
     } else {
-      console.log('Using Grok API (default)');
-      aiResponse = await callGrokAPI(messages, stream);
+      console.log('Hobnob AI using Grok for creative tasks');
+      aiResponse = await callGrokAPI(enhancedMessages, stream);
     }
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
       console.error(`${selectedProvider} API error:`, { status: aiResponse.status, statusText: aiResponse.statusText, errorText });
       
-      // Fallback to another provider if the primary fails
+      // Hobnob AI fallback system
       if (selectedProvider !== 'grok') {
-        console.log('Primary provider failed, falling back to Grok');
-        aiResponse = await callGrokAPI(messages, false);
+        console.log('Hobnob AI falling back to Grok for reliability');
+        aiResponse = await callGrokAPI(enhancedMessages, false);
         if (!aiResponse.ok) {
-          throw new Error(`All providers failed. Last error: ${aiResponse.status} - ${aiResponse.statusText}`);
+          throw new Error(`Hobnob AI: All providers failed. Last error: ${aiResponse.status} - ${aiResponse.statusText}`);
         }
       } else {
-        throw new Error(`${selectedProvider} API error: ${aiResponse.status} - ${aiResponse.statusText}`);
+        throw new Error(`Hobnob AI error: ${selectedProvider} API error: ${aiResponse.status} - ${aiResponse.statusText}`);
       }
     }
 
@@ -269,13 +302,14 @@ serve(async (req) => {
       throw new Error(`No response generated from ${selectedProvider}`);
     }
 
-    console.log(`${selectedProvider} response received successfully`);
+    console.log(`Hobnob AI (${selectedProvider}) response received successfully`);
 
     const response = {
       message: aiMessage,
       usage,
       provider: selectedProvider,
-      isGuest
+      isGuest,
+      assistant: 'Hobnob AI'
     };
 
     return new Response(JSON.stringify(response), {
