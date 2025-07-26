@@ -6,7 +6,7 @@ export interface UnifiedProvider {
   name: string;
   description: string;
   chatProvider: AIProvider | 'grok';
-  imageProvider: 'replicate';
+  imageProvider: 'openai';
   icon: string;
   capabilities: {
     chat: boolean;
@@ -17,11 +17,11 @@ export interface UnifiedProvider {
 export class UnifiedProviderService {
   private static providers: UnifiedProvider[] = [
     {
-      id: 'replicate',
-      name: 'Replicate',
-      description: 'Fast, high-quality image generation with Flux Schnell',
+      id: 'openai',
+      name: 'OpenAI',
+      description: 'High-quality image generation with GPT-Image-1',
       chatProvider: 'grok',
-      imageProvider: 'replicate',
+      imageProvider: 'openai',
       icon: 'zap',
       capabilities: {
         chat: false,
@@ -43,7 +43,7 @@ export class UnifiedProviderService {
   }
 
   static getDefaultProvider(): UnifiedProvider {
-    return this.providers[0]; // Replicate as the only provider
+    return this.providers[0]; // OpenAI as the only provider
   }
 
   static setDefaultProvider(id: string): void {
@@ -54,6 +54,6 @@ export class UnifiedProviderService {
   }
 
   static getSavedProvider(): UnifiedProvider {
-    return this.getDefaultProvider(); // Always return Replicate
+    return this.getDefaultProvider(); // Always return OpenAI
   }
 }

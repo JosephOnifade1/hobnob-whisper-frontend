@@ -52,7 +52,7 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         onClose();
         toast({
           title: "Success",
-          description: "Image generated successfully with Replicate!"
+          description: "Image generated successfully with OpenAI!"
         });
       } else {
         toast({
@@ -86,19 +86,19 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            Generate Image with Replicate
+            Generate Image with OpenAI
           </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
           <div className="bg-muted/50 rounded-lg p-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <span>Using:</span>
-                <span className="font-medium text-foreground">Replicate</span>
-                <span>(Flux Schnell)</span>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <span>Using:</span>
+                  <span className="font-medium text-foreground">OpenAI</span>
+                  <span>(GPT-Image-1)</span>
+                </div>
               </div>
-            </div>
           </div>
 
           <div className="space-y-2">
