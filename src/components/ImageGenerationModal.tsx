@@ -6,7 +6,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Loader2, Image, Sparkles } from 'lucide-react';
 import { ImageGenerationService } from '@/services/imageGenerationService';
-import { UnifiedProviderService } from '@/services/unifiedProviderService';
 import { useToast } from '@/components/ui/use-toast';
 
 interface ImageGenerationModalProps {
@@ -15,7 +14,6 @@ interface ImageGenerationModalProps {
   onImageGenerated: (imageUrl: string, prompt: string, downloadUrl?: string) => void;
   conversationId: string;
   messageId?: string;
-  providerId?: string;
 }
 
 export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
@@ -23,20 +21,11 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
   onClose,
   onImageGenerated,
   conversationId,
-  messageId,
-  providerId
+  messageId
 }) => {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
-
-  const unifiedProvider = providerId 
-    ? UnifiedProviderService.getProvider(providerId)
-    : UnifiedProviderService.getSavedProvider();
-  
-  const imageProvider = unifiedProvider?.imageProvider || 'stability';
-  const providerName = imageProvider === 'openai' ? 'OpenAI' : 
-                      imageProvider === 'stability' ? 'Stability AI' : 'Grok';
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -54,8 +43,7 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
       const response = await ImageGenerationService.generateImage({
         prompt: prompt.trim(),
         conversationId,
-        messageId,
-        providerId
+        messageId
       });
 
       if (response.success && response.imageUrl) {
@@ -64,7 +52,7 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         onClose();
         toast({
           title: "Success",
-          description: `Image generated successfully with ${providerName}!`
+          description: "Image generated successfully with Replicate!"
         });
       } else {
         toast({
@@ -98,7 +86,7 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            Generate Image
+            Generate Image with Replicate
           </DialogTitle>
         </DialogHeader>
         
@@ -107,8 +95,8 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <span>Using:</span>
-                <span className="font-medium text-foreground">{unifiedProvider?.name}</span>
-                <span>({providerName})</span>
+                <span className="font-medium text-foreground">Replicate</span>
+                <span>(Flux Schnell)</span>
               </div>
             </div>
           </div>
@@ -117,7 +105,7 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
             <Label htmlFor="prompt">Image Prompt</Label>
             <Textarea
               id="prompt"
-              placeholder="Describe the image you want to generate..."
+              placeholder="Describe the image you want to generate... (e.g., 'a beautiful sunset over mountains')"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               className="min-h-[100px]"

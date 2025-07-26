@@ -9,71 +9,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-async function generateWithOpenAI(prompt: string) {
-  const response = await fetch('https://api.openai.com/v1/images/generations', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-image-1',
-      prompt: prompt,
-      n: 1,
-      size: '1024x1024',
-      quality: 'high',
-      output_format: 'png'
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return data.data[0].b64_json;
-}
-
-async function generateWithStability(prompt: string, aspectRatio = '1:1', outputFormat = 'png', model = 'core') {
-  const formData = new FormData();
-  formData.append('prompt', prompt);
-  formData.append('aspect_ratio', aspectRatio);
-  formData.append('output_format', outputFormat);
-  
-  // Use the correct endpoint based on model
-  const endpoint = model === 'ultra' 
-    ? 'https://api.stability.ai/v2beta/stable-image/generate/ultra'
-    : 'https://api.stability.ai/v2beta/stable-image/generate/core';
-
-  console.log(`Using Stability API endpoint: ${endpoint}`);
-  console.log(`Parameters: prompt="${prompt}", aspect_ratio="${aspectRatio}", output_format="${outputFormat}"`);
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${Deno.env.get('STABILITY_API_KEY')}`,
-      'Accept': 'image/*'
-    },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Stability API error:', response.status, errorText);
-    console.error('Response headers:', Object.fromEntries(response.headers.entries()));
-    throw new Error(`Stability API error: ${response.status} ${response.statusText} - ${errorText}`);
-  }
-
-  // Response is binary image data
-  const imageData = await response.arrayBuffer();
-  console.log(`Received image data: ${imageData.byteLength} bytes`);
-  
-  // Convert to base64
-  const base64Data = btoa(String.fromCharCode(...new Uint8Array(imageData)));
-  
-  return base64Data;
-}
-
 async function generateWithReplicate(prompt: string, aspectRatio = '1:1') {
   const replicate = new Replicate({
     auth: Deno.env.get('REPLICATE_API_KEY'),
@@ -117,56 +52,6 @@ async function generateWithReplicate(prompt: string, aspectRatio = '1:1') {
   return base64Data;
 }
 
-async function generateImageWithFallback(prompt: string, aspectRatio = '1:1', outputFormat = 'png', model = 'core', preferredProvider = 'replicate') {
-  const providers = preferredProvider === 'replicate' 
-    ? ['replicate', 'openai', 'stability']
-    : preferredProvider === 'openai'
-    ? ['openai', 'replicate', 'stability'] 
-    : ['stability', 'replicate', 'openai'];
-
-  let lastError = null;
-
-  for (const provider of providers) {
-    try {
-      console.log(`Attempting image generation with ${provider}...`);
-      
-      let base64Data;
-      switch (provider) {
-        case 'replicate':
-          if (!Deno.env.get('REPLICATE_API_KEY')) {
-            throw new Error('REPLICATE_API_KEY not configured');
-          }
-          base64Data = await generateWithReplicate(prompt, aspectRatio);
-          break;
-        case 'openai':
-          if (!Deno.env.get('OPENAI_API_KEY')) {
-            throw new Error('OPENAI_API_KEY not configured');
-          }
-          base64Data = await generateWithOpenAI(prompt);
-          break;
-        case 'stability':
-          if (!Deno.env.get('STABILITY_API_KEY')) {
-            throw new Error('STABILITY_API_KEY not configured');
-          }
-          base64Data = await generateWithStability(prompt, aspectRatio, outputFormat, model);
-          break;
-        default:
-          throw new Error(`Unknown provider: ${provider}`);
-      }
-
-      console.log(`✅ Successfully generated image with ${provider}`);
-      return { base64Data, provider };
-
-    } catch (error) {
-      console.error(`❌ ${provider} failed:`, error.message);
-      lastError = error;
-      continue;
-    }
-  }
-
-  throw new Error(`All providers failed. Last error: ${lastError?.message}`);
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -189,11 +74,21 @@ serve(async (req) => {
       });
     }
 
-    const { prompt, conversationId, messageId, provider = 'replicate', aspectRatio, outputFormat, model } = await req.json();
+    const { prompt, conversationId, messageId, aspectRatio } = await req.json();
 
     if (!prompt || !conversationId) {
       return new Response(JSON.stringify({ error: 'Prompt and conversation ID are required' }), {
         status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check if Replicate API key is configured
+    if (!Deno.env.get('REPLICATE_API_KEY')) {
+      return new Response(JSON.stringify({ 
+        error: 'Replicate API key not configured. Please add your REPLICATE_API_KEY in the project settings.' 
+      }), {
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -213,36 +108,32 @@ serve(async (req) => {
 
     if (generationError) {
       console.error('Error creating generation record:', generationError);
-      return new Response(JSON.stringify({ error: 'Failed to create generation record' }), {
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Failed to create generation record. Please ensure you are logged in and have proper permissions.' 
+      }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     try {
-      console.log(`Starting image generation with preferred provider: ${provider}`);
+      console.log(`Starting image generation with Replicate for prompt: "${prompt}"`);
       
-      // Use fallback system to try multiple providers
-      const { base64Data, provider: usedProvider } = await generateImageWithFallback(
-        prompt, 
-        aspectRatio, 
-        outputFormat, 
-        model, 
-        provider
-      );
+      // Generate image with Replicate
+      const base64Data = await generateWithReplicate(prompt, aspectRatio || '1:1');
 
       // Convert base64 to blob
       const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
       
-      // Generate unique filename with proper extension
-      const extension = usedProvider === 'replicate' ? 'webp' : 'png';
-      const filename = `${user.id}/${generation.id}.${extension}`;
+      // Generate unique filename
+      const filename = `${user.id}/${generation.id}.webp`;
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('generated-images')
         .upload(filename, binaryData, {
-          contentType: usedProvider === 'replicate' ? 'image/webp' : 'image/png',
+          contentType: 'image/webp',
           cacheControl: '3600',
           upsert: false
         });
@@ -276,7 +167,7 @@ serve(async (req) => {
         imageUrl: signedUrl?.signedUrl,
         generationId: generation.id,
         prompt: prompt,
-        provider: usedProvider,
+        provider: 'replicate',
         downloadUrl: signedUrl?.signedUrl
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -296,8 +187,10 @@ serve(async (req) => {
         .eq('id', generation.id);
 
       return new Response(JSON.stringify({ 
-        error: 'Failed to generate image', 
-        details: error.message 
+        success: false,
+        error: error.message.includes('REPLICATE_API_KEY') 
+          ? 'Replicate API key not configured properly' 
+          : 'Failed to generate image with Replicate'
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -306,7 +199,10 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Function error:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: 'Internal server error' 
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

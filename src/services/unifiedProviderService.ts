@@ -6,7 +6,7 @@ export interface UnifiedProvider {
   name: string;
   description: string;
   chatProvider: AIProvider | 'grok';
-  imageProvider: 'openai' | 'grok' | 'stability' | 'replicate';
+  imageProvider: 'replicate';
   icon: string;
   capabilities: {
     chat: boolean;
@@ -17,36 +17,12 @@ export interface UnifiedProvider {
 export class UnifiedProviderService {
   private static providers: UnifiedProvider[] = [
     {
-      id: 'grok',
-      name: 'Grok AI',
-      description: 'Advanced AI powered by Grok',
-      chatProvider: 'grok',
-      imageProvider: 'stability',
-      icon: 'brain',
-      capabilities: {
-        chat: true,
-        image: false
-      }
-    },
-    {
       id: 'replicate',
       name: 'Replicate',
       description: 'Fast, high-quality image generation with Flux Schnell',
       chatProvider: 'grok',
       imageProvider: 'replicate',
       icon: 'zap',
-      capabilities: {
-        chat: false,
-        image: true
-      }
-    },
-    {
-      id: 'stability',
-      name: 'Stability AI',
-      description: 'High-quality image generation powered by Stability AI',
-      chatProvider: 'grok',
-      imageProvider: 'stability',
-      icon: 'image',
       capabilities: {
         chat: false,
         image: true
@@ -67,7 +43,7 @@ export class UnifiedProviderService {
   }
 
   static getDefaultProvider(): UnifiedProvider {
-    return this.providers[0]; // Grok as the only provider
+    return this.providers[0]; // Replicate as the only provider
   }
 
   static setDefaultProvider(id: string): void {
@@ -78,6 +54,6 @@ export class UnifiedProviderService {
   }
 
   static getSavedProvider(): UnifiedProvider {
-    return this.getDefaultProvider(); // Always return Grok
+    return this.getDefaultProvider(); // Always return Replicate
   }
 }

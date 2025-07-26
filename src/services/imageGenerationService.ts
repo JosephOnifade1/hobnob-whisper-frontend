@@ -1,14 +1,11 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { UnifiedProviderService } from './unifiedProviderService';
 
 export interface ImageGenerationRequest {
   prompt: string;
   conversationId: string;
   messageId?: string;
-  providerId?: string;
   aspectRatio?: string;
-  outputFormat?: string;
-  model?: string;
 }
 
 export interface ImageGenerationResponse {
@@ -16,7 +13,6 @@ export interface ImageGenerationResponse {
   imageUrl?: string;
   generationId?: string;
   prompt?: string;
-  provider?: string;
   downloadUrl?: string;
   error?: string;
 }
@@ -24,24 +20,14 @@ export interface ImageGenerationResponse {
 export class ImageGenerationService {
   static async generateImage(request: ImageGenerationRequest): Promise<ImageGenerationResponse> {
     try {
-      // Use unified provider selection
-      const unifiedProvider = request.providerId 
-        ? UnifiedProviderService.getProvider(request.providerId)
-        : UnifiedProviderService.getSavedProvider();
-      
-      const imageProvider = unifiedProvider?.imageProvider || 'stability';
-      
-      console.log('Generating image with prompt:', request.prompt, 'Provider:', imageProvider);
+      console.log('Generating image with Replicate:', request.prompt);
       
       const { data, error } = await supabase.functions.invoke('image-generation', {
         body: {
           prompt: request.prompt,
           conversationId: request.conversationId,
           messageId: request.messageId,
-          provider: imageProvider,
-          aspectRatio: request.aspectRatio,
-          outputFormat: request.outputFormat,
-          model: request.model
+          aspectRatio: request.aspectRatio || '1:1'
         }
       });
 
@@ -65,7 +51,6 @@ export class ImageGenerationService {
         imageUrl: data.imageUrl,
         generationId: data.generationId,
         prompt: data.prompt,
-        provider: data.provider,
         downloadUrl: data.downloadUrl
       };
 
