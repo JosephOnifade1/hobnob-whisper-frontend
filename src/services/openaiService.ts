@@ -69,10 +69,13 @@ export class OpenAIService {
     try {
       console.log('Sending streaming message to OpenAI service');
       
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      
       const response = await fetch(`https://mkyvnegyagdfehukmklu.supabase.co/functions/v1/chat-completion`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1reXZuZWd5YWdkZmVodWtta2x1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4ODIxNzcsImV4cCI6MjA2ODQ1ODE3N30.y3tm0N8Kq11mS2aFFk24pn9P7wN6iVLYMhHTvNXfw30`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

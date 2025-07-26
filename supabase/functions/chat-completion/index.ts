@@ -80,7 +80,7 @@ async function callClaudeAPI(messages, stream = false) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-opus-4-20250514',
+      model: 'claude-3-5-sonnet-20241022',
       messages: messages.filter(m => m.role !== 'system'),
       system: messages.find(m => m.role === 'system')?.content || 'You are Hobnob AI, a helpful and intelligent assistant.',
       max_tokens: 4000,
@@ -102,7 +102,7 @@ async function callOpenAIAPI(messages, stream = false) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4.1-2025-04-14',
+      model: 'gpt-4o',
       messages,
       max_tokens: 2000,
       temperature: 0.7,
@@ -174,7 +174,10 @@ serve(async (req) => {
       }
 
       const token = authHeader.replace('Bearer ', '');
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+      
+      // Create auth client for user validation
+      const authClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!);
+      const { data: { user: authUser }, error: authError } = await authClient.auth.getUser(token);
       
       if (authError || !authUser) {
         console.error('Authentication error:', authError);
