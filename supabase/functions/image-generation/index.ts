@@ -99,10 +99,10 @@ serve(async (req) => {
 
     const { prompt, conversationId, messageId, aspectRatio } = await req.json();
 
-    if (!prompt || !conversationId) {
+    if (!prompt) {
       return new Response(JSON.stringify({ 
         success: false,
-        error: 'Prompt and conversation ID are required' 
+        error: 'Prompt is required' 
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -122,12 +122,20 @@ serve(async (req) => {
 
     // Create image generation record
     console.log('Creating image generation record...');
+    console.log('Insert data:', {
+      user_id: user.id,
+      conversation_id: conversationId || null,
+      message_id: messageId || null,
+      prompt: prompt.substring(0, 50) + '...',
+      status: 'pending'
+    });
+    
     const { data: generation, error: generationError } = await supabase
       .from('image_generations')
       .insert({
         user_id: user.id,
-        conversation_id: conversationId,
-        message_id: messageId,
+        conversation_id: conversationId || null,
+        message_id: messageId || null,
         prompt: prompt,
         status: 'pending'
       })

@@ -89,7 +89,7 @@ export type Database = {
       image_generations: {
         Row: {
           completed_at: string | null
-          conversation_id: string
+          conversation_id: string | null
           created_at: string
           error_message: string | null
           id: string
@@ -101,7 +101,7 @@ export type Database = {
         }
         Insert: {
           completed_at?: string | null
-          conversation_id: string
+          conversation_id?: string | null
           created_at?: string
           error_message?: string | null
           id?: string
@@ -113,7 +113,7 @@ export type Database = {
         }
         Update: {
           completed_at?: string | null
-          conversation_id?: string
+          conversation_id?: string | null
           created_at?: string
           error_message?: string | null
           id?: string

@@ -84,7 +84,6 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
 
   const handleOpenPanel = () => {
     setShowPanel(true);
-    onClose();
   };
 
   if (showPanel) {
