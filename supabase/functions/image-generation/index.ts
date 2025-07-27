@@ -20,13 +20,69 @@ const supabaseAuth = createClient(
   Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 );
 
+// Rate limiting function
+async function checkRateLimit(userId: string): Promise<boolean> {
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  
+  const { data, error } = await supabaseServiceRole
+    .from('rate_limits')
+    .select('count')
+    .eq('user_id', userId)
+    .eq('action_type', 'image_generation')
+    .gte('window_start', oneHourAgo.toISOString());
+
+  if (error) {
+    console.error('Rate limit check error:', error);
+    return true; // Allow on error to prevent blocking users
+  }
+
+  const totalCount = data?.reduce((sum, record) => sum + record.count, 0) || 0;
+  return totalCount < 10; // Allow up to 10 images per hour
+}
+
+// Function to log rate limit usage
+async function logRateLimit(userId: string) {
+  const { error } = await supabaseServiceRole
+    .from('rate_limits')
+    .insert({
+      user_id: userId,
+      action_type: 'image_generation',
+      count: 1,
+      window_start: new Date().toISOString()
+    });
+
+  if (error) {
+    console.error('Rate limit logging error:', error);
+  }
+}
+
+// Function to validate and sanitize input
+function validateInput(prompt: string): string {
+  if (!prompt || typeof prompt !== 'string') {
+    throw new Error('Prompt is required and must be a string');
+  }
+
+  // Sanitize prompt - remove potentially harmful content
+  const sanitized = prompt
+    .trim()
+    .substring(0, 4000) // Limit length
+    .replace(/[<>]/g, ''); // Remove HTML-like characters
+
+  if (sanitized.length < 3) {
+    throw new Error('Prompt must be at least 3 characters long');
+  }
+
+  return sanitized;
+}
+
 async function generateWithOpenAI(prompt: string, aspectRatio = '1:1') {
   const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
   if (!openAIApiKey) {
     throw new Error('OpenAI API key not configured');
   }
 
-  console.log(`Generating image with OpenAI - Prompt: ${prompt.substring(0, 50)}...`);
+  const sanitizedPrompt = validateInput(prompt);
+  console.log(`Generating image with OpenAI - Prompt: ${sanitizedPrompt.substring(0, 50)}...`);
   const startTime = Date.now();
 
   const response = await fetch('https://api.openai.com/v1/images/generations', {
@@ -37,7 +93,7 @@ async function generateWithOpenAI(prompt: string, aspectRatio = '1:1') {
     },
     body: JSON.stringify({
       model: 'gpt-image-1',
-      prompt: prompt,
+      prompt: sanitizedPrompt,
       n: 1,
       size: aspectRatio === '16:9' ? '1792x1024' : aspectRatio === '9:16' ? '1024x1792' : '1024x1024',
       response_format: 'b64_json',
@@ -102,6 +158,19 @@ serve(async (req) => {
 
     console.log(`Authenticated user: ${user.id}`);
 
+    // Check rate limiting
+    const canProceed = await checkRateLimit(user.id);
+    if (!canProceed) {
+      console.log('Rate limit exceeded for user:', user.id);
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Rate limit exceeded. You can generate up to 10 images per hour. Please try again later.' 
+      }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { prompt, conversationId, messageId, aspectRatio } = await req.json();
 
     if (!prompt) {
@@ -113,6 +182,9 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Log rate limit usage
+    await logRateLimit(user.id);
 
     // Check if OpenAI API key is configured
     if (!Deno.env.get('OPENAI_API_KEY')) {

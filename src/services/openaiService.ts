@@ -1,3 +1,6 @@
+// SECURITY: OpenAI API key removed from frontend for security
+// All OpenAI operations are now handled securely via Supabase edge functions
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface OpenAIMessage {
@@ -124,6 +127,41 @@ export class OpenAIService {
       };
     } catch (error) {
       console.error('OpenAI streaming error:', error);
+      throw error;
+    }
+  }
+
+  // SECURITY: Image generation now handled via secure edge function
+  static async generateImage(prompt: string, aspectRatio: string = '1:1', conversationId?: string) {
+    try {
+      console.log('Generating image via secure edge function');
+      
+      const { data, error } = await supabase.functions.invoke('image-generation', {
+        body: {
+          prompt,
+          aspectRatio,
+          conversationId,
+        },
+      });
+
+      if (error) {
+        console.error('Image generation error:', error);
+        throw new Error(`Image generation failed: ${error.message}`);
+      }
+
+      if (!data || !data.success) {
+        throw new Error(data?.error || 'Failed to generate image');
+      }
+
+      return {
+        url: data.imageUrl,
+        generationId: data.generationId,
+        downloadUrl: data.downloadUrl,
+        generationTime: data.generationTime,
+        fileSize: data.fileSize
+      };
+    } catch (error) {
+      console.error('OpenAI image generation error:', error);
       throw error;
     }
   }
