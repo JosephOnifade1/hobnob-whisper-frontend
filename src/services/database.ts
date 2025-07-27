@@ -439,7 +439,7 @@ export const imageGenerationService = {
 
   // Update image generation status
   updateStatus: async (id: string, updates: {
-    status: string;
+    status: 'pending' | 'processing' | 'completed' | 'failed';
     image_path?: string;
     error_message?: string;
     completed_at?: string;

@@ -1,101 +1,106 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Create service role client for database operations (bypasses RLS)
+const supabaseServiceRole = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+);
+
+// Create client for auth verification
+const supabaseAuth = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+);
+
 async function generateWithOpenAI(prompt: string, aspectRatio = '1:1') {
-  const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-  if (!openaiApiKey) {
-    throw new Error('OPENAI_API_KEY is required');
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openAIApiKey) {
+    throw new Error('OpenAI API key not configured');
   }
 
-  console.log(`Generating image with OpenAI: "${prompt}" and aspect ratio: ${aspectRatio}`);
-  
-  // Convert aspect ratio to OpenAI size format
-  let size = '1024x1024';
-  if (aspectRatio === '16:9' || aspectRatio === '1536:1024') {
-    size = '1792x1024';
-  } else if (aspectRatio === '9:16' || aspectRatio === '1024:1536') {
-    size = '1024x1792';
-  }
-  
+  console.log(`Generating image with OpenAI - Prompt: ${prompt.substring(0, 50)}...`);
+  const startTime = Date.now();
+
   const response = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${openaiApiKey}`,
+      'Authorization': `Bearer ${openAIApiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: "gpt-image-1",
+      model: 'gpt-image-1',
       prompt: prompt,
       n: 1,
-      size: size,
-      quality: "high",
-      output_format: "png"
+      size: aspectRatio === '16:9' ? '1792x1024' : aspectRatio === '9:16' ? '1024x1792' : '1024x1024',
+      response_format: 'b64_json',
+      quality: 'high',
     }),
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error('OpenAI API error:', errorText);
-    throw new Error(`OpenAI API error: ${response.status} ${errorText}`);
+    const errorData = await response.text();
+    console.error('OpenAI API error:', errorData);
+    throw new Error(`OpenAI API error: ${response.status} - ${errorData}`);
   }
 
-  const result = await response.json();
-  console.log('OpenAI image generation completed');
-
-  if (!result.data || !result.data[0] || !result.data[0].b64_json) {
-    console.error('Unexpected OpenAI response format:', result);
-    throw new Error('No image data received from OpenAI');
-  }
-
-  return result.data[0].b64_json;
+  const data = await response.json();
+  const generationTime = Date.now() - startTime;
+  
+  console.log(`Image generated successfully in ${generationTime}ms`);
+  
+  return {
+    imageData: data.data[0].b64_json,
+    generationTime
+  };
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    );
-
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.error('No authorization header found');
+    console.log('=== Image Generation Request Started ===');
+    
+    // Verify authentication using anon client
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      console.error('No authorization header provided');
       return new Response(JSON.stringify({ 
         success: false,
-        error: 'Authorization required' 
+        error: 'Authentication required' 
       }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const { data: { user } } = await supabase.auth.getUser(
+    // Verify the JWT token
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(
       authHeader.replace('Bearer ', '')
     );
 
-    if (!user) {
-      console.error('User not authenticated');
+    if (authError || !user) {
+      console.error('Authentication failed:', authError);
       return new Response(JSON.stringify({ 
         success: false,
-        error: 'User not authenticated' 
+        error: 'Invalid authentication' 
       }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log('Authenticated user:', user.id);
+    console.log(`Authenticated user: ${user.id}`);
 
     const { prompt, conversationId, messageId, aspectRatio } = await req.json();
 
@@ -120,24 +125,18 @@ serve(async (req) => {
       });
     }
 
-    // Create image generation record
+    // Create image generation record using service role (bypasses RLS)
     console.log('Creating image generation record...');
-    console.log('Insert data:', {
-      user_id: user.id,
-      conversation_id: conversationId || null,
-      message_id: messageId || null,
-      prompt: prompt.substring(0, 50) + '...',
-      status: 'pending'
-    });
-    
-    const { data: generation, error: generationError } = await supabase
+    const { data: generation, error: generationError } = await supabaseServiceRole
       .from('image_generations')
       .insert({
         user_id: user.id,
         conversation_id: conversationId || null,
         message_id: messageId || null,
         prompt: prompt,
-        status: 'pending'
+        status: 'pending',
+        aspect_ratio: aspectRatio || '1:1',
+        model_used: 'gpt-image-1'
       })
       .select()
       .single();
@@ -146,52 +145,66 @@ serve(async (req) => {
       console.error('Error creating generation record:', generationError);
       return new Response(JSON.stringify({ 
         success: false,
-        error: 'Failed to create generation record. Please ensure you are logged in and have proper permissions.' 
+        error: 'Failed to create generation record' 
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log('Generation record created:', generation.id);
+    console.log(`Generation record created: ${generation.id}`);
+
+    // Update status to processing
+    await supabaseServiceRole
+      .from('image_generations')
+      .update({ status: 'processing' })
+      .eq('id', generation.id);
 
     try {
-      console.log(`Starting image generation with OpenAI for prompt: "${prompt}"`);
-      
       // Generate image with OpenAI
-      const base64Data = await generateWithOpenAI(prompt, aspectRatio || '1:1');
-
-      // Convert base64 to blob
-      const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+      const { imageData, generationTime } = await generateWithOpenAI(prompt, aspectRatio);
       
-      // Generate unique filename
+      // Convert base64 to blob
+      const imageBytes = Uint8Array.from(atob(imageData), c => c.charCodeAt(0));
+      const fileSize = imageBytes.length;
+      
+      // Create unique filename
       const filename = `${user.id}/${generation.id}.png`;
       
-      console.log('Uploading image to Supabase storage...');
+      console.log(`Uploading image to storage: ${filename}`);
       
-      // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      // Upload to Supabase storage
+      const { data: uploadData, error: uploadError } = await supabaseServiceRole.storage
         .from('generated-images')
-        .upload(filename, binaryData, {
+        .upload(filename, imageBytes, {
           contentType: 'image/png',
-          cacheControl: '3600',
-          upsert: false
+          upsert: true
         });
 
       if (uploadError) {
-        console.error('Upload error:', uploadError);
-        throw new Error('Failed to upload image to storage');
+        console.error('Storage upload error:', uploadError);
+        throw new Error(`Failed to upload image: ${uploadError.message}`);
       }
 
       console.log('Image uploaded successfully:', uploadData.path);
 
+      // Get public URL
+      const { data: { publicUrl } } = supabaseServiceRole.storage
+        .from('generated-images')
+        .getPublicUrl(filename);
+
+      console.log('Public URL generated:', publicUrl);
+
       // Update generation record with success
-      const { error: updateError } = await supabase
+      const { error: updateError } = await supabaseServiceRole
         .from('image_generations')
         .update({
           status: 'completed',
           image_path: uploadData.path,
-          completed_at: new Date().toISOString()
+          public_url: publicUrl,
+          completed_at: new Date().toISOString(),
+          generation_time_ms: generationTime,
+          file_size_bytes: fileSize
         })
         .eq('id', generation.id);
 
@@ -199,34 +212,25 @@ serve(async (req) => {
         console.error('Error updating generation record:', updateError);
       }
 
-      // Get signed URL for the image
-      const { data: signedUrl, error: signedUrlError } = await supabase.storage
-        .from('generated-images')
-        .createSignedUrl(uploadData.path, 3600);
-
-      if (signedUrlError) {
-        console.error('Error creating signed URL:', signedUrlError);
-        throw new Error('Failed to create signed URL for image');
-      }
-
-      console.log('Image generation completed successfully');
+      console.log('=== Image Generation Completed Successfully ===');
 
       return new Response(JSON.stringify({
         success: true,
-        imageUrl: signedUrl.signedUrl,
+        imageUrl: publicUrl,
         generationId: generation.id,
         prompt: prompt,
-        provider: 'openai',
-        downloadUrl: signedUrl.signedUrl
+        downloadUrl: publicUrl,
+        generationTime: generationTime,
+        fileSize: fileSize
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
 
     } catch (error) {
-      console.error('Error generating image:', error);
+      console.error('Generation error:', error);
       
-      // Update generation record with error
-      await supabase
+      // Update record with error
+      await supabaseServiceRole
         .from('image_generations')
         .update({
           status: 'failed',
@@ -235,22 +239,16 @@ serve(async (req) => {
         })
         .eq('id', generation.id);
 
-      return new Response(JSON.stringify({ 
-        success: false,
-        error: error.message.includes('OPENAI_API_KEY') 
-          ? 'OpenAI API key not configured properly' 
-          : `Failed to generate image: ${error.message}`
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      throw error;
     }
 
   } catch (error) {
-    console.error('Function error:', error);
-    return new Response(JSON.stringify({ 
-      success: false, 
-      error: 'Internal server error' 
+    console.error('=== Image Generation Failed ===');
+    console.error('Error details:', error);
+    
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message || 'Failed to generate image'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

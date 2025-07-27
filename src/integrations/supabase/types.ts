@@ -88,39 +88,54 @@ export type Database = {
       }
       image_generations: {
         Row: {
+          aspect_ratio: string | null
           completed_at: string | null
           conversation_id: string | null
           created_at: string
           error_message: string | null
+          file_size_bytes: number | null
+          generation_time_ms: number | null
           id: string
           image_path: string | null
           message_id: string | null
+          model_used: string | null
           prompt: string
-          status: string
+          public_url: string | null
+          status: Database["public"]["Enums"]["generation_status"]
           user_id: string
         }
         Insert: {
+          aspect_ratio?: string | null
           completed_at?: string | null
           conversation_id?: string | null
           created_at?: string
           error_message?: string | null
+          file_size_bytes?: number | null
+          generation_time_ms?: number | null
           id?: string
           image_path?: string | null
           message_id?: string | null
+          model_used?: string | null
           prompt: string
-          status?: string
+          public_url?: string | null
+          status?: Database["public"]["Enums"]["generation_status"]
           user_id: string
         }
         Update: {
+          aspect_ratio?: string | null
           completed_at?: string | null
           conversation_id?: string | null
           created_at?: string
           error_message?: string | null
+          file_size_bytes?: number | null
+          generation_time_ms?: number | null
           id?: string
           image_path?: string | null
           message_id?: string | null
+          model_used?: string | null
           prompt?: string
-          status?: string
+          public_url?: string | null
+          status?: Database["public"]["Enums"]["generation_status"]
           user_id?: string
         }
         Relationships: [
@@ -270,7 +285,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      generation_status: "pending" | "processing" | "completed" | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -397,6 +412,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      generation_status: ["pending", "processing", "completed", "failed"],
+    },
   },
 } as const

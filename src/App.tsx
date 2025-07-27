@@ -15,6 +15,7 @@ import NotFound from "./pages/NotFound";
 import ToolsDashboard from "./pages/ToolsDashboard";
 import AvatarGenerator from "./pages/AvatarGenerator";
 import DocumentConverter from "./pages/DocumentConverter";
+import ImageGeneration from "./pages/ImageGeneration";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const App = () => {
                 <Route path="/tools" element={<ToolsDashboard />} />
                 <Route path="/tools/avatar-generator" element={<AvatarGenerator />} />
                 <Route path="/tools/document-converter" element={<DocumentConverter />} />
+                <Route path="/tools/image-generation" element={<ImageGeneration />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
