@@ -20,7 +20,11 @@ export interface ImageGenerationResponse {
 export class ImageGenerationService {
   static async generateImage(request: ImageGenerationRequest): Promise<ImageGenerationResponse> {
     try {
-      console.log('Generating image with Replicate:', request.prompt);
+      console.log('Starting image generation request:', {
+        prompt: request.prompt.substring(0, 50) + '...',
+        conversationId: request.conversationId,
+        messageId: request.messageId
+      });
       
       const { data, error } = await supabase.functions.invoke('image-generation', {
         body: {
@@ -32,26 +36,39 @@ export class ImageGenerationService {
       });
 
       if (error) {
-        console.error('Image generation error:', error);
+        console.error('Supabase function error:', error);
         return {
           success: false,
           error: error.message || 'Failed to generate image'
         };
       }
 
-      if (!data.success) {
+      console.log('Image generation response:', data);
+
+      if (!data || !data.success) {
+        const errorMessage = data?.error || 'Failed to generate image';
+        console.error('Image generation failed:', errorMessage);
         return {
           success: false,
-          error: data.error || 'Failed to generate image'
+          error: errorMessage
         };
       }
 
+      if (!data.imageUrl) {
+        console.error('No image URL in response');
+        return {
+          success: false,
+          error: 'No image URL returned from generation service'
+        };
+      }
+
+      console.log('Image generation successful:', data.imageUrl);
       return {
         success: true,
         imageUrl: data.imageUrl,
         generationId: data.generationId,
         prompt: data.prompt,
-        downloadUrl: data.downloadUrl
+        downloadUrl: data.downloadUrl || data.imageUrl
       };
 
     } catch (error) {
@@ -65,7 +82,13 @@ export class ImageGenerationService {
 
   static async downloadImage(imageUrl: string, filename: string) {
     try {
+      console.log('Downloading image:', imageUrl);
       const response = await fetch(imageUrl);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+      
       const blob = await response.blob();
       
       const url = window.URL.createObjectURL(blob);
@@ -76,6 +99,8 @@ export class ImageGenerationService {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      
+      console.log('Image downloaded successfully:', filename);
     } catch (error) {
       console.error('Error downloading image:', error);
       throw error;
@@ -84,6 +109,8 @@ export class ImageGenerationService {
 
   static async getGenerationHistory(conversationId: string) {
     try {
+      console.log('Fetching generation history for conversation:', conversationId);
+      
       const { data, error } = await supabase
         .from('image_generations')
         .select('*')
@@ -95,6 +122,7 @@ export class ImageGenerationService {
         return [];
       }
 
+      console.log('Generation history fetched:', data?.length || 0, 'records');
       return data || [];
     } catch (error) {
       console.error('Error in getGenerationHistory:', error);

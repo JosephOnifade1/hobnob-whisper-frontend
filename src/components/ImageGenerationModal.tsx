@@ -4,9 +4,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Loader2, Image, Sparkles } from 'lucide-react';
+import { Loader2, Image, Sparkles, ExternalLink } from 'lucide-react';
 import { ImageGenerationService } from '@/services/imageGenerationService';
 import { useToast } from '@/components/ui/use-toast';
+import { ImageGenerationPanel } from './ImageGenerationPanel';
 
 interface ImageGenerationModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
 }) => {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showPanel, setShowPanel] = useState(false);
   const { toast } = useToast();
 
   const handleGenerate = async () => {
@@ -80,6 +82,21 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
     }
   };
 
+  const handleOpenPanel = () => {
+    setShowPanel(true);
+    onClose();
+  };
+
+  if (showPanel) {
+    return (
+      <ImageGenerationPanel 
+        conversationId={conversationId}
+        messageId={messageId}
+        onClose={() => setShowPanel(false)}
+      />
+    );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
@@ -92,13 +109,13 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         
         <div className="space-y-4">
           <div className="bg-muted/50 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <span>Using:</span>
-                  <span className="font-medium text-foreground">OpenAI</span>
-                  <span>(GPT-Image-1)</span>
-                </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <span>Using:</span>
+                <span className="font-medium text-foreground">OpenAI</span>
+                <span>(GPT-Image-1)</span>
               </div>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -113,31 +130,43 @@ export const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
             />
           </div>
           
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-between gap-2">
             <Button 
               variant="outline" 
-              onClick={handleClose}
+              onClick={handleOpenPanel}
               disabled={isGenerating}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleGenerate}
-              disabled={isGenerating || !prompt.trim()}
               className="gap-2"
             >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Image className="h-4 w-4" />
-                  Generate Image
-                </>
-              )}
+              <ExternalLink className="h-4 w-4" />
+              Open Panel
             </Button>
+            
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={handleClose}
+                disabled={isGenerating}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleGenerate}
+                disabled={isGenerating || !prompt.trim()}
+                className="gap-2"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Image className="h-4 w-4" />
+                    Generate Image
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

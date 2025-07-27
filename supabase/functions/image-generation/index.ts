@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -49,6 +50,7 @@ async function generateWithOpenAI(prompt: string, aspectRatio = '1:1') {
   console.log('OpenAI image generation completed');
 
   if (!result.data || !result.data[0] || !result.data[0].b64_json) {
+    console.error('Unexpected OpenAI response format:', result);
     throw new Error('No image data received from OpenAI');
   }
 
@@ -66,21 +68,42 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    const { data: { user } } = await supabase.auth.getUser(
-      req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
-    );
-
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('No authorization header found');
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Authorization required' 
+      }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    const { data: { user } } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (!user) {
+      console.error('User not authenticated');
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'User not authenticated' 
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('Authenticated user:', user.id);
+
     const { prompt, conversationId, messageId, aspectRatio } = await req.json();
 
     if (!prompt || !conversationId) {
-      return new Response(JSON.stringify({ error: 'Prompt and conversation ID are required' }), {
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Prompt and conversation ID are required' 
+      }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -89,6 +112,7 @@ serve(async (req) => {
     // Check if OpenAI API key is configured
     if (!Deno.env.get('OPENAI_API_KEY')) {
       return new Response(JSON.stringify({ 
+        success: false,
         error: 'OpenAI API key not configured. Please add your OPENAI_API_KEY in the project settings.' 
       }), {
         status: 500,
@@ -97,6 +121,7 @@ serve(async (req) => {
     }
 
     // Create image generation record
+    console.log('Creating image generation record...');
     const { data: generation, error: generationError } = await supabase
       .from('image_generations')
       .insert({
@@ -120,6 +145,8 @@ serve(async (req) => {
       });
     }
 
+    console.log('Generation record created:', generation.id);
+
     try {
       console.log(`Starting image generation with OpenAI for prompt: "${prompt}"`);
       
@@ -131,6 +158,8 @@ serve(async (req) => {
       
       // Generate unique filename
       const filename = `${user.id}/${generation.id}.png`;
+      
+      console.log('Uploading image to Supabase storage...');
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -145,6 +174,8 @@ serve(async (req) => {
         console.error('Upload error:', uploadError);
         throw new Error('Failed to upload image to storage');
       }
+
+      console.log('Image uploaded successfully:', uploadData.path);
 
       // Update generation record with success
       const { error: updateError } = await supabase
@@ -161,17 +192,24 @@ serve(async (req) => {
       }
 
       // Get signed URL for the image
-      const { data: signedUrl } = await supabase.storage
+      const { data: signedUrl, error: signedUrlError } = await supabase.storage
         .from('generated-images')
         .createSignedUrl(uploadData.path, 3600);
 
+      if (signedUrlError) {
+        console.error('Error creating signed URL:', signedUrlError);
+        throw new Error('Failed to create signed URL for image');
+      }
+
+      console.log('Image generation completed successfully');
+
       return new Response(JSON.stringify({
         success: true,
-        imageUrl: signedUrl?.signedUrl,
+        imageUrl: signedUrl.signedUrl,
         generationId: generation.id,
         prompt: prompt,
         provider: 'openai',
-        downloadUrl: signedUrl?.signedUrl
+        downloadUrl: signedUrl.signedUrl
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -193,7 +231,7 @@ serve(async (req) => {
         success: false,
         error: error.message.includes('OPENAI_API_KEY') 
           ? 'OpenAI API key not configured properly' 
-          : 'Failed to generate image with OpenAI'
+          : `Failed to generate image: ${error.message}`
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
