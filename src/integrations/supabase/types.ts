@@ -217,6 +217,33 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          action_type: string
+          count: number | null
+          created_at: string | null
+          id: string
+          user_id: string
+          window_start: string | null
+        }
+        Insert: {
+          action_type: string
+          count?: number | null
+          created_at?: string | null
+          id?: string
+          user_id: string
+          window_start?: string | null
+        }
+        Update: {
+          action_type?: string
+          count?: number | null
+          created_at?: string | null
+          id?: string
+          user_id?: string
+          window_start?: string | null
+        }
+        Relationships: []
+      }
       tool_usage_logs: {
         Row: {
           created_at: string | null
